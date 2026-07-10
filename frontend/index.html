@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AaharAI - Smart Food Redistribution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script> -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-green-600">AaharAI</h1>
+            <p class="text-xs text-gray-500">Smart Food Redistribution</p>
+        </div>
+        <div class="h-8 w-8 bg-green-200 rounded-full flex items-center justify-center font-bold text-green-800">U</div>
+    </header>
+
+    <div id="screen-dashboard" class="container mx-auto p-6 flex flex-col md:flex-row gap-6 mt-10 justify-center">
+        <button onclick="showScreen('donor')" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-green-500 w-full md:w-1/3 text-center">
+            <h2 class="text-xl font-bold mb-2">Donate Food</h2>
+            <p class="text-gray-500">List Surplus (Hotels, Hostels)</p>
+        </button>
+        <button onclick="loginAsNGO()" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-blue-500 w-full md:w-1/3 text-center">
+            <h2 class="text-xl font-bold mb-2">Claim Food</h2>
+            <p class="text-gray-500">Live Request Feed (NGOs)</p>
+        </button>
+    </div>
+
+    <div id="screen-donor" class="container mx-auto p-6 hidden max-w-lg mt-6">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">List Surplus Food</h2>
+            <select id="foodType" class="w-full mb-3 p-2 border rounded">
+                <option value="cooked_veg">Cooked Veg</option>
+                <option value="cooked_nonveg">Cooked Non-Veg</option>
+                <option value="raw_vegetables">Raw Vegetables</option>
+            </select>
+            <input type="number" id="quantity" placeholder="Quantity (No. of people)" class="w-full mb-3 p-2 border rounded">
+            <input type="datetime-local" id="prepTime" class="w-full mb-3 p-2 border rounded">
+            
+            <div class="flex gap-2 mb-3">
+                <input type="text" id="location" value="25.4358, 81.8463" placeholder="Lat, Lon" class="w-full p-2 border rounded bg-gray-100" readonly>
+                <button class="bg-gray-200 px-3 rounded hover:bg-gray-300">Auto-Detect</button>
+            </div>
+            
+            <div id="shelfLifeWindow" class="bg-yellow-100 border-l-4 border-yellow-500 p-3 mb-4 text-sm hidden">
+                <span class="font-bold">AI Estimate:</span> <span id="estimateText">Processing...</span>
+            </div>
+
+            <button onclick="broadcastFood()" class="w-full bg-green-600 text-white p-3 rounded font-bold hover:bg-green-700 transition">Broadcast to Nearest NGOs</button>
+        </div>
+    </div>
+
+    <div id="screen-ngo" class="container mx-auto p-6 hidden mt-6 flex flex-col lg:flex-row gap-6">
+        <div class="w-full lg:w-1/3">
+            <h2 class="text-2xl font-bold mb-4">Live Request Feed</h2>
+            <div id="feedList" class="flex flex-col gap-4">
+                <p class="text-gray-500 italic">Waiting for broadcasted donations...</p>
+            </div>
+        </div>
+        <div class="w-full lg:w-2/3 bg-white p-2 rounded-xl shadow-lg">
+            <div id="map" class="w-full h-[500px] rounded bg-gray-200"></div>
+        </div>
+    </div>
+
+    <footer class="fixed bottom-0 w-full bg-gray-900 text-white p-3 text-center text-sm">
+        <span class="font-bold text-green-400">Total Food Saved: <span id="statsKg">0</span> Kgs</span> | 
+        <span class="font-bold text-blue-400">Meals Served: <span id="statsMeals">0</span></span>
+    </footer>
+
+    <script>
+        const socket = io('http://localhost:3000');
+        let map;
+
+        function showScreen(screen) {
+            document.getElementById('screen-dashboard').classList.add('hidden');
+            document.getElementById('screen-donor').classList.add('hidden');
+            document.getElementById('screen-ngo').classList.add('hidden');
+            document.getElementById(`screen-${screen}`).classList.remove('hidden');
+        }
+
+        // Mock Login for NGO to register socket
+        function loginAsNGO() {
+            showScreen('ngo');
+            socket.emit('register_ngo', { id: "NGO_TEST_01", coords: [25.4500, 81.8500] });
+            
+            // Init map based near Prayagraj default
+            setTimeout(() => {
+                if(!map) {
+                    map = L.map('map').setView([25.4358, 81.8463], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                }
+            }, 500);
+        }
+
+        // Broadcast Food
+        async function broadcastFood() {
+            const data = {
+                foodType: document.getElementById('foodType').value,
+                quantity: document.getElementById('quantity').value,
+                prepTime: document.getElementById('prepTime').value.replace('T', ' '),
+                currentTemp: 35.0,
+                donorCoords: [25.4358, 81.8463] // Mock static location for now
+            };
+
+            const res = await fetch('http://localhost:3000/api/donations/broadcast', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            if(res.ok) alert("Food Broadcasted Successfully!");
+        }
+
+        // Listen for new NGO alerts
+        socket.on('new_food_alert', (data) => {
+            document.getElementById('feedList').innerHTML = `
+                <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
+                    <p class="font-bold">Donor has ${data.foodType} for ${data.quantity} people.</p>
+                    <p class="text-sm text-red-500">Freshness: ${data.shelfLife.remaining_hours} hours left</p>
+                    <button onclick="drawMapRoute(${data.routing.donor_coordinates[0]}, ${data.routing.donor_coordinates[1]})" 
+                        class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm w-full">Accept & View Route</button>
+                </div>
+            `;
+        });
+
+        function drawMapRoute(lat, lon) {
+            L.marker([lat, lon]).addTo(map).bindPopup('Donor Location').openPopup();
+            map.setView([lat, lon], 14);
+        }
+
+        // Load Stats
+        fetch('http://localhost:3000/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('statsKg').innerText = data.foodSavedKg;
+                document.getElementById('statsMeals').innerText = data.mealsServed;
+            });
+    </script>
+</body>
+</html>
