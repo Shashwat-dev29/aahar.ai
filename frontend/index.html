@@ -73,7 +73,7 @@
     </footer>
 
     <script>
-        const socket = io('http://localhost:3000');
+        const socket = io('https://aahar-ai-xs0e.onrender.com');
         let map;
 
         function showScreen(screen) {
@@ -107,7 +107,7 @@
                 donorCoords: [25.4358, 81.8463] // Mock static location for now
             };
 
-            const res = await fetch('http://localhost:3000/api/donations/broadcast', {
+            const res = await fetch('https://aahar-ai-xs0e.onrender.com/api/donations/broadcast', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)

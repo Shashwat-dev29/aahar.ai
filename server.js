@@ -13,9 +13,18 @@ const Donation = require('./models/donation');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+
+// FIX 1: Explicitly defining allowed methods for Socket.io CORS
+const io = new Server(server, { 
+    cors: { 
+        origin: "*",
+        methods: ["GET", "POST"]
+    } 
+});
 
 connectDB();
+
+// Express CORS is fine as-is
 app.use(cors());
 app.use(express.json());
 
@@ -24,7 +33,7 @@ const connectedNgos = new Map();
 io.on('connection', (socket) => {
     socket.on('register_ngo', (data) => {
         connectedNgos.set(socket.id, { ngoId: data.id, coords: data.coords });
-        console.log(`NGO Registered for Live Feed: ${data.id}`);
+        console.log(` NGO Registered for Live Feed: ${data.id}`);
     });
     socket.on('disconnect', () => connectedNgos.delete(socket.id));
 });
@@ -55,6 +64,7 @@ app.post('/api/donations/broadcast', async (req, res) => {
 
     try {
         let savedDonation = null;
+        let isSpoiled = false; // FIX 2: Added the spoiled tracker back in
 
         for (let [socketId, ngo] of connectedNgos.entries()) {
             const pyRes = await axios.post(process.env.PYTHON_ENGINE_URL, {
@@ -67,6 +77,12 @@ app.post('/api/donations/broadcast', async (req, res) => {
             });
 
             const result = pyRes.data;
+
+            // FIX 2: Stop searching and reject if Python says it's spoiled
+            if (result.donation_status === 'REJECTED' && result.reason === 'Food is spoiled.') {
+                isSpoiled = true;
+                break; 
+            }
 
             if (result.donation_status === 'APPROVED_FOR_PICKUP') {
                 if (!savedDonation) {
@@ -81,10 +97,13 @@ app.post('/api/donations/broadcast', async (req, res) => {
             }
         }
 
-        if (savedDonation) {
-            res.json({ message: "Broadcasted successfully!" });
+        // FIX 2: Send the correct message back to the frontend
+        if (isSpoiled) {
+            return res.status(400).json({ error: "AI Warning: This food has exceeded its safe shelf-life and cannot be distributed." });
+        } else if (savedDonation) {
+            return res.json({ message: "Broadcasted successfully!" });
         } else {
-            res.status(400).json({ error: "No feasible NGOs found in range." });
+            return res.status(400).json({ error: "No feasible NGOs found in range." });
         }
     } catch (err) {
         console.error(err);
