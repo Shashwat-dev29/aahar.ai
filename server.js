@@ -36,6 +36,10 @@ io.on('connection', (socket) => {
         connectedNgos.set(socket.id, { ngoId: data.id, coords: data.coords });
         console.log(` NGO Registered for Live Feed: ${data.id}`);
     });
+    socket.on('delivery_location_update', (data) => {
+        // Broadcast the GPS ping to all connected users instantly
+        socket.broadcast.emit('update_delivery_marker', data); 
+    });
     socket.on('disconnect', () => connectedNgos.delete(socket.id));
 });
 

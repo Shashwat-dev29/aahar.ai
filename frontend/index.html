@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AaharAI - Smart Food Redistribution</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script> -->
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* Failsafe in case Tailwind CDN gets blocked */
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -17,8 +20,12 @@
             <h1 class="text-2xl font-bold text-green-600">AaharAI</h1>
             <p class="text-xs text-gray-500">Smart Food Redistribution</p>
         </div>
-        <div class="h-8 w-8 bg-green-200 rounded-full flex items-center justify-center font-bold text-green-800">U</div>
+        <div class="flex items-center gap-4">
+            <div class="h-8 w-8 bg-green-200 rounded-full flex items-center justify-center font-bold text-green-800">U</div>
+            <button id="logoutBtn" onclick="logoutUser()" class="hidden text-sm bg-red-100 text-red-600 px-3 py-1 rounded font-bold hover:bg-red-200 transition">Logout</button>
+        </div>
     </header>
+
     <!-- Login Screen -->
     <div id="screen-login" class="container mx-auto p-6 max-w-md mt-10">
         <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-green-500">
@@ -40,33 +47,32 @@
             <select id="regRole" class="w-full mb-4 p-2 border rounded">
                 <option value="donor">I want to Donate Food</option>
                 <option value="ngo">I am an NGO (Claim Food)</option>
+                <option value="delivery">I am a Delivery Agent</option>
             </select>
             <button onclick="registerUser()" class="w-full bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700 transition">Register</button>
             <p class="text-center mt-4 text-sm text-gray-600">Already registered? <span onclick="showScreen('login')" class="text-green-600 cursor-pointer font-bold hover:underline">Login here</span></p>
         </div>
     </div>
 
-    <!-- <div id="screen-dashboard" class="container mx-auto p-6 flex flex-col md:flex-row gap-6 mt-10 justify-center">
-        <button onclick="showScreen('donor')" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-green-500 w-full md:w-1/3 text-center">
-            <h2 class="text-xl font-bold mb-2">Donate Food</h2>
-            <p class="text-gray-500">List Surplus (Hotels, Hostels)</p>
-        </button>
-        <button onclick="loginAsNGO()" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-blue-500 w-full md:w-1/3 text-center">
-            <h2 class="text-xl font-bold mb-2">Claim Food</h2>
-            <p class="text-gray-500">Live Request Feed (NGOs)</p>
-        </button>
-    </div> -->
-<div id="screen-dashboard" class="container mx-auto p-6 hidden flex-col md:flex-row gap-6 mt-10 justify-center">
-        <button id="btn-donor-dashboard" onclick="showScreen('donor')" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-green-500 w-full md:w-1/2 text-center hidden">
+    <!-- Dashboard Screen -->
+    <div id="screen-dashboard" class="container mx-auto p-6 hidden flex-col md:flex-row gap-6 mt-10 justify-center">
+        <button id="btn-donor-dashboard" onclick="showScreen('donor')" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-green-500 w-full md:w-1/3 text-center hidden">
             <h2 class="text-xl font-bold mb-2">Donate Food</h2>
             <p class="text-gray-500">List Surplus</p>
         </button>
 
-        <button id="btn-ngo-dashboard" onclick="loginAsNGO()" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-blue-500 w-full md:w-1/2 text-center hidden">
+        <button id="btn-ngo-dashboard" onclick="loginAsNGO()" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-blue-500 w-full md:w-1/3 text-center hidden">
             <h2 class="text-xl font-bold mb-2">Claim Food</h2>
             <p class="text-gray-500">Live Request Feed</p>
         </button>
+        
+        <button id="btn-delivery-dashboard" onclick="startDeliveryMode()" class="bg-white p-10 rounded-xl shadow-lg hover:shadow-xl transition border-t-4 border-yellow-500 w-full md:w-1/3 text-center hidden">
+            <h2 class="text-xl font-bold mb-2">Delivery App</h2>
+            <p class="text-gray-500">Share Live Location</p>
+        </button>
     </div>
+
+    <!-- Donor Screen -->
     <div id="screen-donor" class="container mx-auto p-6 hidden max-w-lg mt-6">
         <div class="bg-white p-6 rounded-xl shadow-lg">
             <h2 class="text-2xl font-bold mb-4">List Surplus Food</h2>
@@ -91,6 +97,7 @@
         </div>
     </div>
 
+    <!-- NGO Screen -->
     <div id="screen-ngo" class="container mx-auto p-6 hidden mt-6 flex flex-col lg:flex-row gap-6">
         <div class="w-full lg:w-1/3">
             <h2 class="text-2xl font-bold mb-4">Live Request Feed</h2>
@@ -102,301 +109,382 @@
             <div id="map" class="w-full h-[500px] rounded bg-gray-200"></div>
         </div>
     </div>
-
-    <footer class="fixed bottom-0 w-full bg-gray-900 text-white p-3 text-center text-sm">
+    
+    <!-- Delivery Agent Screen -->
+    <div id="screen-delivery" class="container mx-auto p-6 hidden mt-10 max-w-md">
+        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-yellow-500 text-center">
+            <h2 class="text-2xl font-bold mb-4">Delivery Agent Mode</h2>
+            <p id="deliveryStatus" class="text-gray-600 mb-4 font-semibold">Location sharing is off.</p>
+            
+            <button id="startTrackingBtn" onclick="startTracking()" class="w-full bg-green-600 text-white p-3 rounded font-bold hover:bg-green-700 transition mb-3">Start Sharing Location</button>
+            <button id="stopTrackingBtn" onclick="stopTracking()" class="w-full bg-red-600 text-white p-3 rounded font-bold hover:bg-red-700 transition hidden">Stop Sharing</button>
+        </div>
+    </div>
+      
+    <footer class="fixed bottom-0 w-full bg-gray-900 text-white p-3 text-center text-sm z-50">
         <span class="font-bold text-green-400">Total Food Saved: <span id="statsKg">0</span> Kgs</span> | 
         <span class="font-bold text-blue-400">Meals Served: <span id="statsMeals">0</span></span>
     </footer>
 
     <script>
-        const socket = io('https://aahar-ai-xs0e.onrender.com');
+        const API_URL = 'https://aahar-ai-xs0e.onrender.com';
+        const socket = io(API_URL);
+        
+        // Global Map Variables
         let map;
+        let currentNgoLat = 0;
+        let currentNgoLon = 0;
+        let watchId = null;
+        let deliveryMarker = null;
 
+        // Routing Engine
         function showScreen(screen) {
+            document.getElementById('screen-login').classList.add('hidden');
+            document.getElementById('screen-register').classList.add('hidden');
             document.getElementById('screen-dashboard').classList.add('hidden');
             document.getElementById('screen-donor').classList.add('hidden');
             document.getElementById('screen-ngo').classList.add('hidden');
+            document.getElementById('screen-delivery').classList.add('hidden');
+            
             document.getElementById(`screen-${screen}`).classList.remove('hidden');
-        }
-
-        // Mock Login for NGO to register socket
-        // Login for NGO to register socket and load map at their real location
-function loginAsNGO() {
-    showScreen('ngo');
-
-    // Check if the browser supports geolocation
-    if (navigator.geolocation) {
-        // Ask the user for their current location
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                // Success: Get the real latitude and longitude
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-
-                // 1. Register the NGO with their REAL coordinates
-                socket.emit('register_ngo', { id: "NGO_LIVE_01", coords: [lat, lon] });
-
-                // 2. Initialize the map at their real location
-                setTimeout(() => {
-                    if (!map) {
-                        map = L.map('map').setView([lat, lon], 13);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                    } else {
-                        map.setView([lat, lon], 13);
-                    }
-                    
-                    // Optional: Drop a blue pin to show them where they are
-                    L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
-                }, 500);
-            },
-            (error) => {
-                // Error/Denied: Fallback to the default coordinates if they click "Block"
-                console.warn("Location access denied or failed. Using fallback.", error);
-                
-                socket.emit('register_ngo', { id: "NGO_TEST_01", coords: [25.4358, 81.8463] });
-                
-                setTimeout(() => {
-                    if (!map) {
-                        map = L.map('map').setView([25.4358, 81.8463], 12);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                    }
-                }, 500);
+            
+            if(screen === 'dashboard') {
+                document.getElementById('screen-dashboard').style.display = 'flex';
+            } else {
+                document.getElementById('screen-dashboard').style.display = '';
             }
-        );
-    } else {
-        alert("Geolocation is not supported by this browser.");
-    }
-}
-// Auto-detect donor location
-function detectDonorLocation() {
-    const locationInput = document.getElementById('location');
-    locationInput.value = "Detecting..."; // Show loading state
+        }
 
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                // Rounding to 4 decimal places for clean UI
-                const lat = position.coords.latitude.toFixed(4);
-                const lon = position.coords.longitude.toFixed(4);
-                locationInput.value = `${lat}, ${lon}`;
-            },
-            (error) => {
-                console.warn("Location access denied.", error);
-                alert("Could not detect location. Make sure location permissions are allowed.");
-                locationInput.value = "25.4358, 81.8463"; // Revert to fallback
+        // --- NGO LOGIC ---
+        function loginAsNGO() {
+            showScreen('ngo');
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        // Save real location for routing
+                        currentNgoLat = lat;
+                        currentNgoLon = lon;
+
+                        const userEmail = localStorage.getItem('email') || "Unknown_NGO";
+                        socket.emit('register_ngo', { id: userEmail, coords: [lat, lon] });
+
+                        setTimeout(() => {
+                            if (!map) {
+                                map = L.map('map').setView([lat, lon], 13);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                            } else {
+                                map.setView([lat, lon], 13);
+                            }
+                            L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+                        }, 500);
+                    },
+                    (error) => {
+                        console.warn("Location access denied or failed. Using fallback.", error);
+                        
+                        // Save fallback location for routing
+                        currentNgoLat = 25.4358;
+                        currentNgoLon = 81.8463;
+                        
+                        const userEmail = localStorage.getItem('email') || "Unknown_NGO";
+                        socket.emit('register_ngo', { id: userEmail, coords: [25.4358, 81.8463] });
+                        
+                        setTimeout(() => {
+                            if (!map) {
+                                map = L.map('map').setView([25.4358, 81.8463], 12);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                            }
+                        }, 500);
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by this browser.");
             }
-        );
-    } else {
-        alert("Geolocation is not supported by this browser.");
-    }
-}
-
-        // Broadcast Food
-async function broadcastFood() {
-    const locString = document.getElementById('location').value;
-    const coordsArray = locString.split(',').map(coord => parseFloat(coord.trim()));
-    const lat = coordsArray[0];
-    const lon = coordsArray[1];
-    let realTemp = 35.0;
-    try {
-        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-        if (weatherRes.ok) {
-            const weatherData = await weatherRes.json();
-            realTemp = weatherData.current_weather.temperature;
-            console.log(`Live temperature fetched: ${realTemp}°C`);
         }
-    } catch (err) {
-        console.warn("Could not fetch live weather, using fallback temperature.", err);
-    }
-    const data = {
-        foodType: document.getElementById('foodType').value,
-        quantity: document.getElementById('quantity').value,
-        prepTime: document.getElementById('prepTime').value.replace('T', ' '),
-        currentTemp: realTemp,
-        donorCoords: coordsArray // Now uses the detected location
-    };
 
-    try {
-        const res = await fetch('https://aahar-ai-xs0e.onrender.com/api/donations/broadcast', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-
-        const resultData = await res.json();
-
-        if (res.ok) {
-            alert("Food Broadcasted Successfully!");
-        } else {
-            // This will display "AI Warning: Food is spoiled" or "No NGOs found"
-            alert("Broadcast Failed: " + resultData.error); 
-        }
-    } catch (err) {
-        alert("Server error. Please wait a moment and try again.");
-    }
-}
-
-        
         socket.on('new_food_alert', (data) => {
             const feedList = document.getElementById('feedList');
-    
-    if (feedList.innerHTML.includes('Waiting for broadcasted donations')) {
-        feedList.innerHTML = ''; 
-    }
-           const feedHTML = `
-        <div class="bg-white p-4 rounded shadow border-l-4 border-green-500 mb-4">
-            <p class="font-bold">Donor has ${data.foodType} for ${data.quantity} people.</p>
-            <p class="text-sm text-red-500">Freshness: ${data.shelfLife.remaining_hours} hours left</p>
-           <button onclick="acceptDonation(this, ${data.routing.donor_coordinates[0]}, ${data.routing.donor_coordinates[1]})"
-    class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm w-full hover:bg-blue-700 transition">Accept & View Route</button>
-    </div>
-    `;
+            if (feedList.innerHTML.includes('Waiting for broadcasted donations')) {
+                feedList.innerHTML = ''; 
+            }
+            const feedHTML = `
+                <div class="bg-white p-4 rounded shadow border-l-4 border-green-500 mb-4">
+                    <p class="font-bold">Donor has ${data.foodType} for ${data.quantity} people.</p>
+                    <p class="text-sm text-red-500">Freshness: ${data.shelfLife.remaining_hours} hours left</p>
+                    <button onclick="acceptDonation(this, ${data.routing.donor_coordinates[0]}, ${data.routing.donor_coordinates[1]})"
+                        class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm w-full hover:bg-blue-700 transition">Accept & View Route</button>
+                </div>
+            `;
+            feedList.insertAdjacentHTML('beforeend', feedHTML);
+        });
 
-    
-    feedList.insertAdjacentHTML('beforeend', feedHTML);
-});
-            
-        
+        socket.on('update_delivery_marker', (data) => {
+            const lat = data.coords[0];
+            const lon = data.coords[1];
 
-        // function drawMapRoute(lat, lon) {
-        //     L.marker([lat, lon]).addTo(map).bindPopup('Donor Location').openPopup();
-        //     map.setView([lat, lon], 14);
-        // }
+            if (!deliveryMarker && map) {
+                const bikeIcon = L.icon({
+                    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png', 
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                });
+                deliveryMarker = L.marker([lat, lon], {icon: bikeIcon}).addTo(map).bindPopup("Delivery Agent is here!").openPopup();
+            } else if (deliveryMarker) {
+                deliveryMarker.setLatLng([lat, lon]); 
+            }
+        });
 
         function acceptDonation(buttonElement, donorLat, donorLon) {
-    // 1. Change the card UI to show it was accepted
-    const card = buttonElement.parentElement;
-    card.classList.replace('border-green-500', 'border-gray-300');
-    card.classList.replace('bg-white', 'bg-gray-100');
-    card.innerHTML = `
-        <p class="font-bold text-green-700"> Donation Accepted!</p>
-        <p class="text-sm text-gray-600">Navigating to pickup location...</p>
-    `;
+            const card = buttonElement.parentElement;
+            card.classList.replace('border-green-500', 'border-gray-300');
+            card.classList.replace('bg-white', 'bg-gray-100');
+            card.innerHTML = `
+                <p class="font-bold text-green-700">✅ Donation Accepted!</p>
+                <p class="text-sm text-gray-600">Navigating to pickup location...</p>
+            `;
 
-    // 2. Drop the Donor Pin
-    const donorMarker = L.marker([donorLat, donorLon]).addTo(map).bindPopup('Pick Up Here').openPopup();
+            L.marker([donorLat, donorLon]).addTo(map).bindPopup('Pick Up Here').openPopup();
 
-    // 3. Get the NGO's current location (the center of the map from when they logged in)
-    const ngoLat = map.getCenter().lat;
-    const ngoLon = map.getCenter().lng;
+            // Use the saved NGO coordinates to fix the map routing bug!
+            const ngoLat = currentNgoLat;
+            const ngoLon = currentNgoLon;
 
-    // 4. Draw a visual route (line) between the NGO and the Donor
-    const routeLine = L.polyline([
-        [ngoLat, ngoLon], 
-        [donorLat, donorLon]
-    ], {
-        color: 'blue',
-        weight: 5,
-        dashArray: '10, 10' // Makes it a cool dotted line
-    }).addTo(map);
+            const routingUrl = `https://router.project-osrm.org/route/v1/driving/${ngoLon},${ngoLat};${donorLon},${donorLat}?overview=full&geometries=geojson`;
 
-    // 5. Automatically zoom and pan the map so both the NGO and Donor fit perfectly on the screen
-    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-}
+            fetch(routingUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.routes && data.routes.length > 0) {
+                        const routeCoordinates = data.routes[0].geometry.coordinates;
+                        const leafletCoordinates = routeCoordinates.map(coord => [coord[1], coord[0]]);
 
-        // Load Stats
-        fetch('https://aahar-ai-xs0e.onrender.com/api/stats')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('statsKg').innerText = data.foodSavedKg;
-                document.getElementById('statsMeals').innerText = data.mealsServed;
+                        const routeLine = L.polyline(leafletCoordinates, {
+                            color: 'blue',
+                            weight: 5
+                        }).addTo(map);
+
+                        map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+                    } else {
+                        alert("Could not find a driving route to this location.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching route:", error);
+                    alert("Routing service is currently unavailable.");
+                });
+        }
+
+        // --- DONOR LOGIC ---
+        function detectDonorLocation() {
+            const locationInput = document.getElementById('location');
+            locationInput.value = "Detecting..."; 
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(4);
+                        const lon = position.coords.longitude.toFixed(4);
+                        locationInput.value = `${lat}, ${lon}`;
+                    },
+                    (error) => {
+                        console.warn("Location access denied.", error);
+                        alert("Could not detect location. Make sure location permissions are allowed.");
+                        locationInput.value = "25.4358, 81.8463"; 
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        async function broadcastFood() {
+            const locString = document.getElementById('location').value;
+            const coordsArray = locString.split(',').map(coord => parseFloat(coord.trim()));
+            const lat = coordsArray[0];
+            const lon = coordsArray[1];
+            let realTemp = 35.0;
+            
+            try {
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                if (weatherRes.ok) {
+                    const weatherData = await weatherRes.json();
+                    realTemp = weatherData.current_weather.temperature;
+                }
+            } catch (err) {
+                console.warn("Could not fetch live weather, using fallback temperature.", err);
+            }
+            
+            const data = {
+                foodType: document.getElementById('foodType').value,
+                quantity: document.getElementById('quantity').value,
+                prepTime: document.getElementById('prepTime').value.replace('T', ' '),
+                currentTemp: realTemp,
+                donorCoords: coordsArray 
+            };
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/donations/broadcast`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const resultData = await res.json();
+
+                if (res.ok) {
+                    alert("Food Broadcasted Successfully!");
+                } else {
+                    alert("Broadcast Failed: " + resultData.error); 
+                }
+            } catch (err) {
+                alert("Server error. Please wait a moment and try again.");
+            }
+        }
+
+        // --- DELIVERY AGENT LOGIC ---
+        function startDeliveryMode() {
+            showScreen('delivery');
+        }
+
+        function startTracking() {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+
+            document.getElementById('startTrackingBtn').classList.add('hidden');
+            document.getElementById('stopTrackingBtn').classList.remove('hidden');
+            document.getElementById('deliveryStatus').innerText = "Broadcasting live location... 📡";
+            document.getElementById('deliveryStatus').classList.replace('text-gray-600', 'text-green-600');
+
+            const userEmail = localStorage.getItem('email');
+
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    socket.emit('delivery_location_update', {
+                        id: userEmail,
+                        coords: [lat, lon]
+                    });
+                },
+                (error) => {
+                    console.warn("Tracking error:", error);
+                },
+                { enableHighAccuracy: true, maximumAge: 0 }
+            );
+        }
+
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId); 
+                watchId = null;
+            }
+            document.getElementById('startTrackingBtn').classList.remove('hidden');
+            document.getElementById('stopTrackingBtn').classList.add('hidden');
+            document.getElementById('deliveryStatus').innerText = "Location sharing is off.";
+            document.getElementById('deliveryStatus').classList.replace('text-green-600', 'text-gray-600');
+        }
+
+        // --- AUTH & DASHBOARD LOGIC ---
+        async function registerUser() {
+            const data = {
+                name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                role: document.getElementById('regRole').value,
+                coords: [25.4358, 81.8463]
+            };
+
+            const res = await fetch(`${API_URL}/api/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
             });
-            // Update your showScreen function to handle the new screens
-function showScreen(screen) {
-    document.getElementById('screen-login').classList.add('hidden');
-    document.getElementById('screen-register').classList.add('hidden');
-    document.getElementById('screen-dashboard').classList.add('hidden');
-    document.getElementById('screen-donor').classList.add('hidden');
-    document.getElementById('screen-ngo').classList.add('hidden');
-    
-    document.getElementById(`screen-${screen}`).classList.remove('hidden');
-    
-    if(screen === 'dashboard') {
-        document.getElementById('screen-dashboard').style.display = 'flex';
-    } else {
-        document.getElementById('screen-dashboard').style.display = '';
-    }
-}
+            
+            if (res.ok) {
+                alert("Account created! You can now log in.");
+                showScreen('login');
+            } else {
+                const result = await res.json();
+                alert("Registration failed: " + result.error);
+            }
+        }
 
-// Register User
-async function registerUser() {
-    const data = {
-        name: document.getElementById('regName').value,
-        email: document.getElementById('regEmail').value,
-        password: document.getElementById('regPassword').value,
-        role: document.getElementById('regRole').value,
-        coords: [25.4358, 81.8463]
-    };
+        async function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const data = {
+                email: email,
+                password: document.getElementById('loginPassword').value
+            };
 
-    const res = await fetch('https://aahar-ai-xs0e.onrender.com/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    
-    if (res.ok) {
-        alert("Account created! You can now log in.");
-        showScreen('login');
-    } else {
-        const result = await res.json();
-        alert("Registration failed: " + result.error);
-    }
-}
+            const res = await fetch(`${API_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
 
-// Login User
-async function loginUser() {
-    const data = {
-        email: document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPassword').value
-    };
+            if (res.ok) {
+                const result = await res.json();
+                
+                localStorage.setItem('token', result.token);
+                localStorage.setItem('role', result.role);
+                localStorage.setItem('email', email); // SAVING EMAIL FIXED!
+                
+                loadRoleBasedDashboard();
+            } else {
+                alert("Invalid email or password.");
+            }
+        }
 
-    const res = await fetch('https://aahar-ai-xs0e.onrender.com/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
+        function logoutUser() {
+            localStorage.clear(); 
+            document.getElementById('logoutBtn').classList.add('hidden'); 
+            showScreen('login'); 
+            stopTracking(); // Ensure tracking stops on logout
+        }
 
-    if (res.ok) {
-        const result = await res.json();
-        
-        // Save session locally
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('role', result.role);
-        
-        loadRoleBasedDashboard();
-    } else {
-        alert("Invalid email or password.");
-    }
-}
+        function loadRoleBasedDashboard() {
+            const role = localStorage.getItem('role');
+            
+            if (!role) {
+                showScreen('login');
+                return;
+            }
+            
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            showScreen('dashboard');
 
-// Show correct button based on role
-function loadRoleBasedDashboard() {
-    const role = localStorage.getItem('role');
-    
-    if (!role) {
-        showScreen('login');
-        return;
-    }
+            if (role === 'donor') {
+                document.getElementById('btn-donor-dashboard').classList.remove('hidden');
+                document.getElementById('btn-ngo-dashboard').classList.add('hidden');
+                document.getElementById('btn-delivery-dashboard').classList.add('hidden');
+            } else if (role === 'ngo') {
+                document.getElementById('btn-donor-dashboard').classList.add('hidden');
+                document.getElementById('btn-ngo-dashboard').classList.remove('hidden');
+                document.getElementById('btn-delivery-dashboard').classList.add('hidden');
+            } else if (role === 'delivery') {
+                document.getElementById('btn-donor-dashboard').classList.add('hidden');
+                document.getElementById('btn-ngo-dashboard').classList.add('hidden');
+                document.getElementById('btn-delivery-dashboard').classList.remove('hidden');
+            }
+        }
 
-    showScreen('dashboard');
-
-    if (role === 'donor') {
-        document.getElementById('btn-donor-dashboard').classList.remove('hidden');
-        document.getElementById('btn-ngo-dashboard').classList.add('hidden');
-    } else if (role === 'ngo') {
-        document.getElementById('btn-donor-dashboard').classList.add('hidden');
-        document.getElementById('btn-ngo-dashboard').classList.remove('hidden');
-    }
-}
-
-// Check session on page load
-window.onload = () => {
-    if (localStorage.getItem('token')) {
-        loadRoleBasedDashboard();
-    } else {
-        showScreen('login');
-    }
-};
+        window.onload = () => {
+            if (localStorage.getItem('token')) {
+                loadRoleBasedDashboard();
+            } else {
+                showScreen('login');
+            }
+        };
     </script>
 </body>
 </html>
