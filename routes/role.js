@@ -87,8 +87,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios'); // <-- 1. Added missing axios import
 const router = express.Router();
-const User = require('./models/User');
-const Donation = require('./models/donation');
+const User = require('../models/User');
+const Donation = require('../models/donation');
 
 router.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
