@@ -135,7 +135,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
 
             if (result.donation_status === 'REJECTED' && result.reason === 'Food is spoiled.') {
                 isSpoiled = true;
-                break; 
+                break;
             }
 
             if (result.donation_status === 'APPROVED_FOR_PICKUP') {
@@ -144,7 +144,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
                 }
                 io.to(socketId).emit('new_food_alert', {
                     donationId: savedDonation._id,
-                    foodType, quantity, 
+                    foodType, quantity,
                     routing: result.routing_analysis,
                     shelfLife: result.shelf_life_analysis
                 });
@@ -166,7 +166,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
 
 router.get('/api/stats', async (req, res) => {
     const total = await Donation.countDocuments();
-    res.json({ mealsServed: total * 25, foodSavedKg: total * 5 }); 
+    res.json({ mealsServed: total * 25, foodSavedKg: total * 5 });
 });
 
 module.exports = router;

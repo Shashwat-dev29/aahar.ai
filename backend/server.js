@@ -3,17 +3,17 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
-const connectDB = require('./config/db');
+const connectDB = require('./db');
 
 const app = express();
 const server = http.createServer(app);
 
 // Explicitly defining allowed methods for Socket.io CORS (Typo fixed)
-const io = new Server(server, { 
-    cors: { 
+const io = new Server(server, {
+    cors: {
         origin: "http://127.0.0.1:5500",
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    } 
+    }
 });
 
 connectDB();
@@ -29,12 +29,12 @@ io.on('connection', (socket) => {
         connectedNgos.set(socket.id, { ngoId: data.id, coords: data.coords });
         console.log(`NGO Registered for Live Feed: ${data.id}`);
     });
-    
+
     socket.on('delivery_location_update', (data) => {
         // Broadcast the GPS ping to all connected users instantly
-        socket.broadcast.emit('update_delivery_marker', data); 
+        socket.broadcast.emit('update_delivery_marker', data);
     });
-    
+
     socket.on('disconnect', () => connectedNgos.delete(socket.id));
 });
 
