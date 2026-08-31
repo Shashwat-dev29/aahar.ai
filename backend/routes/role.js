@@ -183,7 +183,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Ensure correct path
 const router = express.Router();
-
+const axios = require('axios');
 // --- 1. REGISTER ---
 router.post('/api/auth/register', async (req, res) => {
     const { name, email, password, role, coords } = req.body;
