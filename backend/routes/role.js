@@ -253,6 +253,7 @@ router.post('/api/auth/login', async (req, res) => {
             coords: user.defaultCoords 
         });
     } catch (err) {
+        console.log(err)
         res.status(500).json({ error: "Login failed." });
     }
 });
