@@ -1,17 +1,21 @@
+const dns=require('dns')
+dns.setServers(['1.1.1.1', '8.8.8.8']);
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
-const connectDB = require('./db');
+const connectDB = require('./config/db');
 
 const app = express();
 const server = http.createServer(app);
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 
 // Explicitly defining allowed methods for Socket.io CORS (Typo fixed)
 const io = new Server(server, {
     cors: {
-        origin: "http://127.0.0.1:5500",
+        origin:["http://127.0.0.1:5500","http://localhost:5173"],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     }
 });
@@ -19,7 +23,8 @@ const io = new Server(server, {
 connectDB();
 
 // Express CORS
-app.use(cors({ origin: "http://127.0.0.1:5500" }));
+app.use(cors({ origin: ["http://localhost:5173", "http://127.0.0.1:5500"], 
+    credentials: true }));
 app.use(express.json());
 
 const connectedNgos = new Map();
