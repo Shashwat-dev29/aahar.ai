@@ -225,14 +225,14 @@ router.post('/api/auth/login', async (req, res) => {
         // Create Access Token (Short-lived, sent in JSON response)
         const accessToken = jwt.sign(
             { id: user._id, role: user.role }, 
-            process.env.ACCESS_TOKEN_SECRET, 
+            process.env.JWT_SECRET, 
             { expiresIn: '15m' }
         );
 
         // Create Refresh Token (Long-lived, sent in secure cookie)
         const refreshToken = jwt.sign(
             { id: user._id }, 
-            process.env.REFRESH_TOKEN_SECRET, 
+            process.env.JWT_SECRET, 
             { expiresIn: '7d' }
         );
 
