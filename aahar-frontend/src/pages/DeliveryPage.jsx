@@ -1,6 +1,33 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { io } from 'socket.io-client';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import axios from 'axios';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconAnchor: [12, 41] });
+L.Marker.prototype.options.icon = DefaultIcon;
+
+const bikeIcon = new L.Icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+});
+
+function MapController({ routeCoords, center }) {
+    const map = useMap();
+    useEffect(() => {
+        if (routeCoords.length > 0) {
+            map.fitBounds(routeCoords, { padding: [50, 50] });
+        } else if (center) {
+            map.setView(center, 13);
+        }
+    }, [routeCoords, center, map]);
+    return null;
+}
 
 const API_URL = 'https://aahar-ai-xs0e.onrender.com';
 
@@ -19,10 +46,44 @@ export default function DeliveryPage() {
     const [activeTask, setActiveTask] = useState(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [selectedTab, setSelectedTab] = useState('today');
+    const [showMap, setShowMap] = useState(false);
+    const [routeCoords, setRouteCoords] = useState([]);
+    const [eta, setEta] = useState(null);
+    const [currentLocation, setCurrentLocation] = useState([25.4358, 81.8463]);
 
     const socketRef = useRef(null);
     const watchIdRef = useRef(null);
     const timerRef = useRef(null);
+    const lastFetchTimeRef = useRef(0);
+
+    // Dynamic Route Calculation
+    useEffect(() => {
+        if (!showMap || !activeTask) return;
+        
+        const now = Date.now();
+        // Throttle route calculation to once every 5 seconds to avoid spamming the API on every GPS micro-movement
+        if (now - lastFetchTimeRef.current < 5000) return; 
+        
+        const targetCoords = activeStatus === 'none' ? activeTask.pickup : activeTask.dropoff;
+        
+        const fetchRoute = async () => {
+            const routingUrl = `https://router.project-osrm.org/route/v1/driving/${currentLocation[1]},${currentLocation[0]};${targetCoords[1]},${targetCoords[0]}?overview=full&geometries=geojson`;
+            try {
+                const res = await axios.get(routingUrl);
+                if (res.data.routes && res.data.routes.length > 0) {
+                    const route = res.data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    setRouteCoords(route);
+                    const durationSeconds = res.data.routes[0].duration;
+                    setEta(Math.ceil(durationSeconds / 60));
+                    lastFetchTimeRef.current = now;
+                }
+            } catch (error) {
+                console.error("Routing error:", error);
+            }
+        };
+        
+        fetchRoute();
+    }, [currentLocation, showMap, activeTask, activeStatus]);
 
     useEffect(() => {
         socketRef.current = io(API_URL);
@@ -79,6 +140,7 @@ export default function DeliveryPage() {
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+                    setCurrentLocation([lat, lon]);
                     socketRef.current.emit('register_delivery', {
                         id: user?.email,
                         coords: [lat, lon]
@@ -87,6 +149,7 @@ export default function DeliveryPage() {
                 },
                 () => {
                     // Fallback: register with default coords
+                    setCurrentLocation([25.4358, 81.8463]);
                     socketRef.current.emit('register_delivery', {
                         id: user?.email,
                         coords: [25.4358, 81.8463]
@@ -99,6 +162,7 @@ export default function DeliveryPage() {
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
+                    setCurrentLocation([lat, lon]);
                     socketRef.current.emit('delivery_location_update', {
                         id: user?.email,
                         coords: [lat, lon]
@@ -117,10 +181,9 @@ export default function DeliveryPage() {
         }
     };
 
-    const openGoogleMaps = (type) => {
+    const openEmbeddedMap = async (type) => {
         if (!activeTask) return;
-        const coords = type === 'pickup' ? activeTask.pickup : activeTask.dropoff;
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}&travelmode=driving`, '_blank');
+        setShowMap(true);
     };
 
     const handleAction = () => {
@@ -138,6 +201,9 @@ export default function DeliveryPage() {
                 donationId: activeTask.donationId,
                 status: 'delivered'
             });
+            setShowMap(false);
+            setRouteCoords([]);
+            setEta(null);
             setActiveTask(null);
         }
     };
@@ -282,7 +348,7 @@ export default function DeliveryPage() {
                                                 <p className="text-xs text-gray-500 mt-0.5">{activeTask.distance} away</p>
                                             </div>
                                             <button
-                                                onClick={() => openGoogleMaps('pickup')}
+                                                onClick={() => openEmbeddedMap('pickup')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors"
                                             >
                                                 📍 Navigate
@@ -307,7 +373,7 @@ export default function DeliveryPage() {
                                                 <p className="font-semibold text-gray-900 text-sm mt-0.5">NGO Center</p>
                                             </div>
                                             <button
-                                                onClick={() => openGoogleMaps('dropoff')}
+                                                onClick={() => openEmbeddedMap('dropoff')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors"
                                             >
                                                 📍 Navigate
@@ -329,6 +395,37 @@ export default function DeliveryPage() {
                             >
                                 {activeStatus === 'none' ? '📦 Mark as Picked Up' : '✅ Mark as Delivered'}
                             </button>
+
+                            {/* Embedded Map */}
+                            {showMap && (
+                                <div className="mt-6 rounded-xl overflow-hidden border border-gray-200 relative animate-scale-in">
+                                    {eta && (
+                                        <div className="absolute top-2 right-2 z-[1000] bg-white px-3 py-2 rounded-lg shadow-md flex items-center gap-2">
+                                            <span className="text-xl">⏱️</span>
+                                            <div>
+                                                <div className="text-xs text-gray-500 font-bold uppercase">Estimated Time</div>
+                                                <div className="text-sm font-extrabold text-brand-600">{eta} mins based on current traffic</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <MapContainer center={currentLocation} zoom={14} className="w-full" style={{ height: '300px' }}>
+                                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                        <MapController routeCoords={routeCoords} center={currentLocation} />
+                                        
+                                        <Marker position={currentLocation} icon={bikeIcon}>
+                                            <Popup>You are here (Tracker)</Popup>
+                                        </Marker>
+                                        
+                                        <Marker position={activeStatus === 'none' ? activeTask.pickup : activeTask.dropoff}>
+                                            <Popup>Destination</Popup>
+                                        </Marker>
+
+                                        {routeCoords.length > 0 && (
+                                            <Polyline positions={routeCoords} color="#3b82f6" weight={5} opacity={0.8} />
+                                        )}
+                                    </MapContainer>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

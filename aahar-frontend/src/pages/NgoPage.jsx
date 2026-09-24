@@ -76,7 +76,12 @@ export default function NgoPage() {
             setDeliveryAgentLoc([data.coords[0], data.coords[1]]);
         });
 
-        return () => socket.disconnect();
+        return () => {
+            socket.off('new_food_alert');
+            socket.off('delivery_status_updated');
+            socket.off('update_delivery_marker');
+            socket.disconnect();
+        };
     }, [user.email]);
 
     const acceptDonation = async (index, donorLat, donorLon) => {

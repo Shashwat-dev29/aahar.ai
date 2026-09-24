@@ -74,6 +74,7 @@ export default function DonorPage() {
             }
 
             const payload = {
+                donorId: user?.email,
                 foodType: foodType,
                 quantity: parseInt(quantity),
                 prepTime: prepTime.replace('T', ' '),
