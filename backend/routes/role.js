@@ -297,13 +297,15 @@ router.post('/api/auth/logout', (req, res) => {
 router.post('/api/donations/broadcast', async (req, res) => {
     const { donorId, foodType, quantity, prepTime, currentTemp, donorCoords } = req.body;
 
-    // 2. Grab the live socket variables from the Express app object
+    // Grab the live socket variables from the Express app object
     const io = req.app.get('io');
     const connectedNgos = req.app.get('connectedNgos');
+    const connectedDeliveryAgents = req.app.get('connectedDeliveryAgents');
 
     try {
         let savedDonation = null;
         let isSpoiled = false;
+        let bestNgoCoords = null; // Track the first approved NGO's coords for delivery
 
         for (let [socketId, ngo] of connectedNgos.entries()) {
             const pyRes = await axios.post(process.env.PYTHON_ENGINE_URL, {
@@ -325,6 +327,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
             if (result.donation_status === 'APPROVED_FOR_PICKUP') {
                 if (!savedDonation) {
                     savedDonation = await Donation.create({ donorId, foodType, quantity, donorCoords });
+                    bestNgoCoords = ngo.coords; // Save the first approved NGO's location
                 }
                 io.to(socketId).emit('new_food_alert', {
                     donationId: savedDonation._id,
@@ -332,6 +335,23 @@ router.post('/api/donations/broadcast', async (req, res) => {
                     routing: result.routing_analysis,
                     shelfLife: result.shelf_life_analysis
                 });
+            }
+        }
+
+        // After NGO alerts, also notify all online delivery agents
+        if (savedDonation && connectedDeliveryAgents.size > 0) {
+            const deliveryPayload = {
+                donationId: savedDonation._id,
+                foodType,
+                quantity,
+                donorCoords,
+                ngoCoords: bestNgoCoords,
+                distance: "Calculating..."
+            };
+
+            for (let [socketId, agent] of connectedDeliveryAgents.entries()) {
+                io.to(socketId).emit('delivery_assigned', deliveryPayload);
+                console.log(`Delivery assignment sent to agent: ${agent.agentId}`);
             }
         }
 

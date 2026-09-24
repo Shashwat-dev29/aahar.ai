@@ -26,9 +26,25 @@ export default function DeliveryPage() {
 
     useEffect(() => {
         socketRef.current = io(API_URL);
+
+        // Listen for real delivery assignments from the backend
+        socketRef.current.on('delivery_assigned', (data) => {
+            console.log("New Delivery Assigned!", data);
+            
+            setActiveTask({
+                pickup: data.donorCoords || [25.4358, 81.8463],
+                dropoff: data.ngoCoords || [25.4500, 81.8500],
+                details: `${data.quantity || 'Food'} Meals - Pickup at Donor`,
+                foodType: data.foodType || "Food Package",
+                distance: data.distance || "Calculating..."
+            });
+            setActiveStatus('none');
+        });
+
         return () => {
             if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
             if (timerRef.current) clearInterval(timerRef.current);
+            socketRef.current.off('delivery_assigned');
             socketRef.current.disconnect();
         };
     }, []);
@@ -57,6 +73,27 @@ export default function DeliveryPage() {
         if (checked) {
             if (!navigator.geolocation) return alert("Geolocation not supported");
 
+            // Register this delivery agent with the backend so it can receive assignments
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    socketRef.current.emit('register_delivery', {
+                        id: user?.email,
+                        coords: [lat, lon]
+                    });
+                    console.log('Registered as delivery agent with backend');
+                },
+                () => {
+                    // Fallback: register with default coords
+                    socketRef.current.emit('register_delivery', {
+                        id: user?.email,
+                        coords: [25.4358, 81.8463]
+                    });
+                }
+            );
+
+            // Start continuous GPS tracking
             watchIdRef.current = navigator.geolocation.watchPosition(
                 (position) => {
                     const lat = position.coords.latitude;
@@ -70,17 +107,6 @@ export default function DeliveryPage() {
                 { enableHighAccuracy: true, maximumAge: 0 }
             );
 
-            setTimeout(() => {
-                if (!activeTask) {
-                    setActiveTask({
-                        pickup: [25.4358, 81.8463],
-                        dropoff: [25.4500, 81.8500],
-                        details: "50 Meals - Pickup at Hotel Galaxy",
-                        foodType: "Cooked Veg",
-                        distance: "2.3 km"
-                    });
-                }
-            }, 3000);
         } else {
             if (watchIdRef.current) {
                 navigator.geolocation.clearWatch(watchIdRef.current);
@@ -243,7 +269,7 @@ export default function DeliveryPage() {
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Pickup (Donor)</p>
-                                                <p className="font-semibold text-gray-900 text-sm mt-0.5">{activeTask.foodType || 'Food Package'}</p>
+                                                <p className="font-semibold text-gray-900 text-sm mt-0.5">{activeTask.foodType}</p>
                                                 <p className="text-xs text-gray-500 mt-0.5">{activeTask.distance} away</p>
                                             </div>
                                             <button

@@ -28,24 +28,43 @@ app.use(cors({ origin: ["http://localhost:5173", "http://127.0.0.1:5500"],
 app.use(express.json());
 
 const connectedNgos = new Map();
+const connectedDeliveryAgents = new Map();
 
 io.on('connection', (socket) => {
+    // NGO registration
     socket.on('register_ngo', (data) => {
         connectedNgos.set(socket.id, { ngoId: data.id, coords: data.coords });
         console.log(`NGO Registered for Live Feed: ${data.id}`);
     });
 
+    // Delivery agent registration
+    socket.on('register_delivery', (data) => {
+        connectedDeliveryAgents.set(socket.id, { agentId: data.id, coords: data.coords });
+        console.log(`Delivery Agent Registered: ${data.id}`);
+    });
+
     socket.on('delivery_location_update', (data) => {
+        // Update stored coords for this delivery agent
+        for (let [sid, agent] of connectedDeliveryAgents.entries()) {
+            if (agent.agentId === data.id) {
+                agent.coords = data.coords;
+                break;
+            }
+        }
         // Broadcast the GPS ping to all connected users instantly
         socket.broadcast.emit('update_delivery_marker', data);
     });
 
-    socket.on('disconnect', () => connectedNgos.delete(socket.id));
+    socket.on('disconnect', () => {
+        connectedNgos.delete(socket.id);
+        connectedDeliveryAgents.delete(socket.id);
+    });
 });
 
 // Share these variables so role.js can use them
 app.set('io', io);
 app.set('connectedNgos', connectedNgos);
+app.set('connectedDeliveryAgents', connectedDeliveryAgents);
 
 // Import and use your route file
 const roleRoutes = require('./routes/role');
