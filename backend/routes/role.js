@@ -184,6 +184,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Ensure correct path
 const router = express.Router();
 const axios = require('axios');
+const Donation = require('../models/donation'); // Check your exact file path and capitalization
 // --- 1. REGISTER ---
 router.post('/api/auth/register', async (req, res) => {
     const { name, email, password, role, coords } = req.body;
