@@ -40,7 +40,6 @@ export default function NgoPage() {
     const [donorLocation, setDonorLocation] = useState(null);
     const [routeCoords, setRouteCoords] = useState([]);
     const [deliveryAgentLoc, setDeliveryAgentLoc] = useState(null);
-    const [activeStep, setActiveStep] = useState(1); // 0-indexed
 
     useEffect(() => {
         socket = io(API_URL);
@@ -61,7 +60,16 @@ export default function NgoPage() {
         }
 
         socket.on('new_food_alert', (data) => {
-            setFeed(prev => [...prev, { ...data, accepted: false }]);
+            setFeed(prev => [...prev, { ...data, accepted: false, step: 0 }]);
+        });
+
+        socket.on('delivery_status_updated', (data) => {
+            setFeed(prev => prev.map(item => {
+                if (item.donationId === data.donationId) {
+                    return { ...item, step: data.status === 'picked_up' ? 2 : 3 };
+                }
+                return item;
+            }));
         });
 
         socket.on('update_delivery_marker', (data) => {
@@ -73,10 +81,22 @@ export default function NgoPage() {
 
     const acceptDonation = async (index, donorLat, donorLon) => {
         const updatedFeed = [...feed];
-        updatedFeed[index].accepted = true;
+        const item = updatedFeed[index];
+        item.accepted = true;
+        item.step = 1; // 1 = Accepted
         setFeed(updatedFeed);
+        
+        // Show route on map
         setDonorLocation([donorLat, donorLon]);
-        setActiveStep(1);
+
+        // Emit to backend so delivery agents are assigned
+        socket.emit('ngo_accepted_donation', {
+            donationId: item.donationId,
+            foodType: item.foodType,
+            quantity: item.quantity,
+            donorCoords: [donorLat, donorLon],
+            ngoCoords: ngoLocation
+        });
 
         const routingUrl = `https://router.project-osrm.org/route/v1/driving/${ngoLocation[1]},${ngoLocation[0]};${donorLon},${donorLat}?overview=full&geometries=geojson`;
 
@@ -184,19 +204,21 @@ export default function NgoPage() {
                                                             {STEP_TRACKER.map((step, si) => (
                                                                 <div key={si} className="flex items-center flex-1">
                                                                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
-                                                                        si <= activeStep
+                                                                        si <= item.step
                                                                             ? 'gradient-brand text-white shadow-md'
                                                                             : 'bg-gray-200 text-gray-400'
                                                                     }`}>
                                                                         {step.icon}
                                                                     </div>
                                                                     {si < STEP_TRACKER.length - 1 && (
-                                                                        <div className={`flex-1 h-0.5 mx-1 rounded ${si < activeStep ? 'bg-brand-400' : 'bg-gray-200'}`}></div>
+                                                                        <div className={`flex-1 h-0.5 mx-1 rounded ${si < item.step ? 'bg-brand-400' : 'bg-gray-200'}`}></div>
                                                                     )}
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                        <p className="text-xs text-gray-500 mt-2 text-center">Navigating to pickup location...</p>
+                                                        <p className="text-xs text-gray-500 mt-2 text-center">
+                                                            {item.step === 1 ? 'Navigating to pickup location...' : item.step === 2 ? 'Out for delivery to you...' : 'Delivery completed!'}
+                                                        </p>
                                                     </div>
                                                 ) : (
                                                     <div className="p-4">

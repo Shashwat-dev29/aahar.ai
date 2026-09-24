@@ -338,22 +338,8 @@ router.post('/api/donations/broadcast', async (req, res) => {
             }
         }
 
-        // After NGO alerts, also notify all online delivery agents
-        if (savedDonation && connectedDeliveryAgents.size > 0) {
-            const deliveryPayload = {
-                donationId: savedDonation._id,
-                foodType,
-                quantity,
-                donorCoords,
-                ngoCoords: bestNgoCoords,
-                distance: "Calculating..."
-            };
+        // Note: Delivery agents are now notified via the 'ngo_accepted_donation' socket event in server.js
 
-            for (let [socketId, agent] of connectedDeliveryAgents.entries()) {
-                io.to(socketId).emit('delivery_assigned', deliveryPayload);
-                console.log(`Delivery assignment sent to agent: ${agent.agentId}`);
-            }
-        }
 
         if (isSpoiled) {
             return res.status(400).json({ error: "AI Warning: This food has exceeded its safe shelf-life and cannot be distributed." });

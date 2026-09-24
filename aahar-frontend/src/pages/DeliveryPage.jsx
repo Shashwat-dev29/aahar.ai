@@ -32,6 +32,7 @@ export default function DeliveryPage() {
             console.log("New Delivery Assigned!", data);
             
             setActiveTask({
+                donationId: data.donationId,
                 pickup: data.donorCoords || [25.4358, 81.8463],
                 dropoff: data.ngoCoords || [25.4500, 81.8500],
                 details: `${data.quantity || 'Food'} Meals - Pickup at Donor`,
@@ -125,10 +126,18 @@ export default function DeliveryPage() {
     const handleAction = () => {
         if (activeStatus === 'none') {
             setActiveStatus('picked_up');
+            socketRef.current.emit('delivery_status_update', {
+                donationId: activeTask.donationId,
+                status: 'picked_up'
+            });
         } else {
             alert("Delivery Complete! Great job. 🎉");
             setStats(prev => ({ trips: prev.trips + 1, kgs: prev.kgs + 15 }));
             setActiveStatus('none');
+            socketRef.current.emit('delivery_status_update', {
+                donationId: activeTask.donationId,
+                status: 'delivered'
+            });
             setActiveTask(null);
         }
     };

@@ -55,6 +55,30 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('update_delivery_marker', data);
     });
 
+    // When an NGO accepts a donation, assign it to delivery agents
+    socket.on('ngo_accepted_donation', (data) => {
+        if (connectedDeliveryAgents.size > 0) {
+            const deliveryPayload = {
+                donationId: data.donationId,
+                foodType: data.foodType,
+                quantity: data.quantity,
+                donorCoords: data.donorCoords,
+                ngoCoords: data.ngoCoords,
+                distance: "Calculating..."
+            };
+
+            for (let [socketId, agent] of connectedDeliveryAgents.entries()) {
+                io.to(socketId).emit('delivery_assigned', deliveryPayload);
+                console.log(`Delivery assignment sent to agent: ${agent.agentId}`);
+            }
+        }
+    });
+
+    // When delivery agent updates status (picked up, delivered)
+    socket.on('delivery_status_update', (data) => {
+        socket.broadcast.emit('delivery_status_updated', data);
+    });
+
     socket.on('disconnect', () => {
         connectedNgos.delete(socket.id);
         connectedDeliveryAgents.delete(socket.id);
