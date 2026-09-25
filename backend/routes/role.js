@@ -124,25 +124,36 @@ router.post('/api/donations/broadcast', async (req, res) => {
         let savedDonation = null;
         let isSpoiled = false;
 
-        for (let [socketId, ngo] of connectedNgos.entries()) {
-            const pyRes = await axios.post(process.env.PYTHON_ENGINE_URL, {
-                food_type: foodType,
-                prep_time_str: prepTime,
-                current_temp: parseFloat(currentTemp),
-                quantity: parseInt(quantity),
-                donor_coords: donorCoords,
-                ngo_coords: ngo.coords
-            });
+        const promises = Array.from(connectedNgos.entries()).map(async ([socketId, ngo]) => {
+            try {
+                const pyRes = await axios.post(process.env.PYTHON_ENGINE_URL, {
+                    food_type: foodType,
+                    prep_time_str: prepTime,
+                    current_temp: parseFloat(currentTemp),
+                    quantity: parseInt(quantity),
+                    donor_coords: donorCoords,
+                    ngo_coords: ngo.coords
+                });
+                return { socketId, result: pyRes.data };
+            } catch (err) {
+                return null; // Ignore failed requests to Python engine
+            }
+        });
 
-            const result = pyRes.data;
+        const responses = await Promise.all(promises);
+
+        for (const resData of responses) {
+            if (!resData) continue;
+            const { socketId, result } = resData;
 
             if (result.donation_status === 'REJECTED' && result.reason === 'Food is spoiled.') {
                 isSpoiled = true;
-                break;
+                break; // Stop assigning if food is completely spoiled
             }
 
             if (result.donation_status === 'APPROVED_FOR_PICKUP') {
                 if (!savedDonation) {
+                    // Create only once
                     savedDonation = await Donation.create({ donorId, foodType, quantity, donorCoords });
                 }
                 io.to(socketId).emit('new_food_alert', {

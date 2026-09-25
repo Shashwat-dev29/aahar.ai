@@ -10,7 +10,18 @@ const connectDB = require('./config/db');
 const app = express();
 const server = http.createServer(app);
 const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 app.use(cookieParser());
+
+// Rate Limiter Setup
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per `window`
+    message: { error: "Too many requests from this IP, please try again after 15 minutes" },
+    standardHeaders: true, 
+    legacyHeaders: false, 
+});
+app.use(limiter);
 
 // Explicitly defining allowed methods for Socket.io CORS (Typo fixed)
 const io = new Server(server, {
@@ -44,12 +55,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('delivery_location_update', (data) => {
-        // Update stored coords for this delivery agent
-        for (let [sid, agent] of connectedDeliveryAgents.entries()) {
-            if (agent.agentId === data.id) {
-                agent.coords = data.coords;
-                break;
-            }
+        // Update stored coords for this delivery agent in O(1) time
+        const agent = connectedDeliveryAgents.get(socket.id);
+        if (agent) {
+            agent.coords = data.coords;
         }
         // Broadcast the GPS ping to all connected users instantly
         socket.broadcast.emit('update_delivery_marker', data);
