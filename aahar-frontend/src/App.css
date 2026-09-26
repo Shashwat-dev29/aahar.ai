@@ -11,21 +11,32 @@
 /* ===== Premium Card ===== */
 .premium-card {
   background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #E2E8F0;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+.dark .premium-card {
+  background: #13142B;
+  border-color: #2A2B42;
 }
 .premium-card:hover {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.04);
   transform: translateY(-2px);
 }
 
-/* ===== Gradient Backgrounds ===== */
+/* ===== Zomato Brand Colors ===== */
 .gradient-brand {
-  background: linear-gradient(135deg, #E23744 0%, #FC6D2D 100%);
+  background: #E23744;
+}
+.dark .gradient-brand {
+  background: #A3202E;
 }
 .gradient-brand-soft {
-  background: linear-gradient(135deg, #FFF5F5 0%, #FFF8F0 100%);
+  background: #FCE8EA;
+}
+.dark .gradient-brand-soft {
+  background: #2A1744;
 }
 .gradient-success {
   background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
@@ -37,20 +48,28 @@
 /* ===== Branded Input ===== */
 .input-branded {
   width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #E0E0E0;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid #E8E8E8;
+  border-radius: 8px;
   font-size: 15px;
   font-family: 'Inter', sans-serif;
-  transition: all 0.3s ease;
-  background: #FAFAFA;
-  color: #1A1A2E;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #1c1c1c;
   outline: none;
+}
+.dark .input-branded {
+  background: #1D1E36;
+  border-color: #3B3C56;
+  color: #F8FAFC;
 }
 .input-branded:focus {
   border-color: #E23744;
   background: #ffffff;
-  box-shadow: 0 0 0 4px rgba(226, 55, 68, 0.08);
+}
+.dark .input-branded:focus {
+  background: #0A0B1A;
+  border-color: #9D50E5;
 }
 .input-branded::placeholder {
   color: #9E9E9E;
@@ -59,14 +78,14 @@
 /* ===== Branded Select ===== */
 .select-branded {
   width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #E0E0E0;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid #E8E8E8;
+  border-radius: 8px;
   font-size: 15px;
   font-family: 'Inter', sans-serif;
-  transition: all 0.3s ease;
-  background: #FAFAFA;
-  color: #1A1A2E;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #1c1c1c;
   outline: none;
   appearance: none;
   cursor: pointer;
@@ -74,10 +93,18 @@
   background-repeat: no-repeat;
   background-position: right 16px center;
 }
+.dark .select-branded {
+  background-color: #1D1E36;
+  border-color: #3B3C56;
+  color: #F8FAFC;
+}
 .select-branded:focus {
   border-color: #E23744;
   background-color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(226, 55, 68, 0.08);
+}
+.dark .select-branded:focus {
+  background-color: #0A0B1A;
+  border-color: #9D50E5;
 }
 
 /* ===== Branded Button ===== */
@@ -86,21 +113,25 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #E23744 0%, #FC6D2D 100%);
+  padding: 12px 24px;
+  background: #E23744; /* Zomato Red */
   color: #ffffff;
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   font-family: 'Inter', sans-serif;
-  letter-spacing: 0.3px;
 }
 .btn-brand:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(226, 55, 68, 0.35);
+  background: #CB202D;
+}
+.dark .btn-brand {
+  background: #9D50E5;
+}
+.dark .btn-brand:hover {
+  background: #8A3CCC;
 }
 .btn-brand:active {
   transform: translateY(0);
@@ -117,20 +148,19 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 28px;
+  padding: 12px 24px;
   background: transparent;
   color: #E23744;
-  font-weight: 700;
-  font-size: 15px;
-  border: 2px solid #E23744;
-  border-radius: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  border: 1px solid #E23744;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   font-family: 'Inter', sans-serif;
 }
 .btn-outline:hover {
-  background: #FFF5F5;
-  transform: translateY(-2px);
+  background: #FCE8EA;
 }
 
 .btn-success {
@@ -157,11 +187,15 @@
 /* ===== Stat Card ===== */
 .stat-card {
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid #E2E8F0;
   transition: all 0.3s ease;
+}
+.dark .stat-card {
+  background: #13142B;
+  border-color: #2A2B42;
 }
 .stat-card:hover {
   transform: translateY(-2px);
@@ -184,9 +218,9 @@
   padding: 16px 20px;
 }
 .toast-error {
-  background: linear-gradient(135deg, #FFF5F5 0%, #FFE0E0 100%);
-  border: 1px solid #FFB8B8;
-  color: #A82233;
+  background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
+  border: 1px solid #FECDD3;
+  color: #BE123C;
   border-radius: 12px;
   padding: 16px 20px;
 }
@@ -203,7 +237,7 @@
   letter-spacing: 0.5px;
 }
 .badge-brand {
-  background: #FFE0E0;
+  background: #FCE8EA;
   color: #E23744;
 }
 .badge-success {

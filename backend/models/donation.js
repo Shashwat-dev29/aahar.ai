@@ -7,6 +7,7 @@ const donationSchema = new mongoose.Schema({
     donorCoords: [Number],
     status: { type: String, default: 'active' }, // active, accepted, completed
     assignedNgoId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    assignedDeliveryAgentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     createdAt: { type: Date, default: Date.now }
 });
 

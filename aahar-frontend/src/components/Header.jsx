@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
@@ -7,6 +7,32 @@ export default function Header() {
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
+
+    // Dark Mode Logic (Default Off)
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        return localStorage.getItem('theme') === 'dark';
+    });
+
+    useEffect(() => {
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [isDarkMode]);
+
+    // Sync across tabs
+    useEffect(() => {
+        const handleStorage = (e) => {
+            if (e.key === 'theme') {
+                setIsDarkMode(e.newValue === 'dark');
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
 
     // Hide header on auth pages
     const isAuthPage = ['/login', '/register'].includes(location.pathname);
@@ -38,7 +64,7 @@ export default function Header() {
     };
 
     return (
-        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100" style={{ boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}>
+        <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#121212]/90 backdrop-blur-xl border-b border-gray-100 dark:border-[#2A2B42] transition-colors duration-300" style={{ boxShadow: '0 1px 12px rgba(0,0,0,0.04)' }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
@@ -47,7 +73,7 @@ export default function Header() {
                             <span className="text-white text-lg">🍛</span>
                         </div>
                         <div>
-                            <h1 className="text-xl font-extrabold tracking-tight leading-none" style={{ background: 'linear-gradient(135deg, #E23744, #FC6D2D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            <h1 className="text-xl font-extrabold tracking-tight leading-none text-[#E23744] dark:text-[#9D50E5]">
                                 Aahar.AI
                             </h1>
                             <p className="text-[10px] text-gray-400 font-medium leading-none -mt-0.5">Smart Food Redistribution</p>
@@ -62,8 +88,8 @@ export default function Header() {
                                 to={link.to}
                                 className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 no-underline ${
                                     location.pathname === link.to
-                                        ? 'bg-brand-50 text-brand-600'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        ? 'bg-[#FCE8EA] text-[#E23744] dark:bg-[#9D50E5]/20 dark:text-[#9D50E5]'
+                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1E36] hover:text-[#1c1c1c] dark:hover:text-white'
                                 }`}
                             >
                                 <span className="text-base">{link.icon}</span>
@@ -73,15 +99,24 @@ export default function Header() {
                     </nav>
 
                     {/* Right Side */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        {/* Theme Toggle */}
+                        <button 
+                            onClick={() => setIsDarkMode(!isDarkMode)} 
+                            className="p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400"
+                            aria-label="Toggle Dark Mode"
+                        >
+                            {isDarkMode ? '☀️' : '🌙'}
+                        </button>
+
                         {user && (
                             <>
                                 {/* Notification Bell */}
-                                <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors" aria-label="Notifications">
-                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <button className="relative p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" aria-label="Notifications">
+                                    <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                     </svg>
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full"></span>
+                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#E23744] dark:bg-[#9D50E5] rounded-full"></span>
                                 </button>
 
                                 {/* Profile Dropdown */}
@@ -99,17 +134,17 @@ export default function Header() {
                                     </button>
 
                                     {profileOpen && (
-                                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 animate-slide-down" style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                                            <div className="px-4 py-3 border-b border-gray-50">
-                                                <p className="text-sm font-bold text-gray-900">{user.email}</p>
+                                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 py-2 animate-slide-down" style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                                            <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-800">
+                                                <p className="text-sm font-bold text-gray-900 dark:text-white">{user.email}</p>
                                                 <span className={`badge ${getRoleBadge().color} mt-1`}>{getRoleBadge().label}</span>
                                             </div>
-                                            <Link to={`/${user.role}`} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors no-underline" onClick={() => setProfileOpen(false)}>
+                                            <Link to={`/${user.role}`} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors no-underline" onClick={() => setProfileOpen(false)}>
                                                 <span>📊</span> My Dashboard
                                             </Link>
                                             <button
                                                 onClick={() => { setProfileOpen(false); logout(); }}
-                                                className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-50"
+                                                className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors border-t border-gray-50 dark:border-gray-800"
                                             >
                                                 <span>🚪</span> Sign Out
                                             </button>

@@ -100,13 +100,36 @@ export default function DeliveryPage() {
                 foodType: data.foodType || "Food Package",
                 distance: data.distance || "Calculating..."
             });
+            setActiveStatus('pending'); // Start as pending until accepted
+        });
+
+        socketRef.current.on('delivery_already_claimed', () => {
+            alert("Too late! Another agent just claimed this delivery.");
+            setActiveTask(null);
             setActiveStatus('none');
+        });
+
+        socketRef.current.on('delivery_claimed_by_other', (data) => {
+            setActiveTask(prev => {
+                if (prev && prev.donationId === data.donationId) {
+                    setActiveStatus('none');
+                    return null;
+                }
+                return prev;
+            });
+        });
+
+        socketRef.current.on('delivery_accept_success', () => {
+            setActiveStatus('none'); // Moves to accepted (waiting for pickup)
         });
 
         return () => {
             if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
             if (timerRef.current) clearInterval(timerRef.current);
             socketRef.current.off('delivery_assigned');
+            socketRef.current.off('delivery_already_claimed');
+            socketRef.current.off('delivery_claimed_by_other');
+            socketRef.current.off('delivery_accept_success');
             socketRef.current.disconnect();
         };
     }, []);
@@ -187,7 +210,12 @@ export default function DeliveryPage() {
     };
 
     const handleAction = () => {
-        if (activeStatus === 'none') {
+        if (activeStatus === 'pending') {
+            socketRef.current.emit('accept_delivery', {
+                donationId: activeTask.donationId,
+                agentId: user.email // Sending email as ID, matches what register_delivery sends
+            });
+        } else if (activeStatus === 'none') {
             setActiveStatus('picked_up');
             socketRef.current.emit('delivery_status_update', {
                 donationId: activeTask.donationId,
@@ -215,29 +243,18 @@ export default function DeliveryPage() {
     };
 
     return (
-        <div className="min-h-screen bg-surface-50">
+        <div className="min-h-screen bg-surface-50 dark:bg-[#0A0B1A] transition-colors duration-300">
             {/* Duty Banner */}
             <div className={`transition-all duration-500 ${isOnline ? 'gradient-brand' : 'bg-surface-800'} text-white`}>
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
                     <div className="flex items-center justify-between animate-fade-in">
                         <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl ${isOnline ? 'bg-white/20 backdrop-blur-sm' : 'bg-white/10'}`}>
-                                    🚴
-                                </div>
-                                {isOnline && (
-                                    <>
-                                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></span>
-                                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-ping"></span>
-                                    </>
-                                )}
-                            </div>
                             <div>
                                 <h1 className="text-xl sm:text-2xl font-extrabold">
                                     {isOnline ? 'You are Online' : 'You are Offline'}
                                 </h1>
                                 <p className="text-white/70 text-sm mt-0.5">
-                                    {isOnline ? '🟢 Scanning for nearby pickups...' : 'Toggle to start accepting deliveries'}
+                                    {isOnline ? 'Scanning for nearby pickups...' : 'Toggle to start accepting deliveries'}
                                 </p>
                             </div>
                         </div>
@@ -260,8 +277,7 @@ export default function DeliveryPage() {
                         { icon: '📏', value: '5.2 km', label: 'Distance', color: 'text-accent-500' },
                         { icon: '⭐', value: '4.9', label: 'Rating', color: 'text-yellow-500' },
                     ].map((stat, i) => (
-                        <div key={i} className="stat-card text-center">
-                            <div className="text-2xl mb-1">{stat.icon}</div>
+                        <div key={i} className="stat-card text-center py-4">
                             <div className={`text-xl font-extrabold ${stat.color}`}>{stat.value}</div>
                             <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mt-1">{stat.label}</div>
                         </div>
@@ -272,7 +288,7 @@ export default function DeliveryPage() {
                 <div className="premium-card p-6 mb-6 animate-slide-up delay-200">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
-                            <span>💰</span> Earnings
+                            Impact & Earnings
                         </h3>
                         <div className="flex bg-surface-100 rounded-xl p-0.5">
                             {['today', 'week', 'month'].map(tab => (
@@ -291,8 +307,8 @@ export default function DeliveryPage() {
                         </div>
                     </div>
                     <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-extrabold text-gray-900">{earningsData[selectedTab].amount}</span>
-                        <span className="text-sm text-gray-400">{earningsData[selectedTab].trips} trips</span>
+                        <span className="text-3xl font-extrabold text-gray-900 dark:text-white">{earningsData[selectedTab].amount}</span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500">{earningsData[selectedTab].trips} trips</span>
                     </div>
                 </div>
 
@@ -300,11 +316,12 @@ export default function DeliveryPage() {
                 {isOnline && !activeTask && (
                     <div className="premium-card p-8 text-center mb-6 animate-fade-in">
                         <div className="relative inline-block mb-4">
-                            <div className="text-5xl animate-pulse-soft">📡</div>
-                            <div className="absolute inset-0 w-16 h-16 mx-auto rounded-full border-2 border-brand-200 animate-radar"></div>
+                            <div className="w-16 h-16 rounded-full border-2 border-brand-200 animate-radar flex items-center justify-center">
+                                <div className="w-4 h-4 bg-brand-500 rounded-full animate-pulse"></div>
+                            </div>
                         </div>
-                        <p className="font-bold text-gray-700">Scanning for nearby pickups...</p>
-                        <p className="text-xs text-gray-400 mt-1">Stay online to receive delivery requests</p>
+                        <p className="font-bold text-gray-700 dark:text-gray-300">Scanning for nearby pickups...</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Stay online to receive delivery requests</p>
                     </div>
                 )}
 
@@ -314,7 +331,6 @@ export default function DeliveryPage() {
                         {/* Header */}
                         <div className="gradient-brand text-white px-6 py-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <span className="text-2xl">📦</span>
                                 <div>
                                     <h3 className="font-extrabold">Active Delivery</h3>
                                     <p className="text-white/80 text-xs">{activeTask.details}</p>
@@ -322,7 +338,7 @@ export default function DeliveryPage() {
                             </div>
                             {activeStatus !== 'none' && (
                                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 text-sm font-bold tabular-nums">
-                                    ⏱️ {formatTime(elapsedTime)}
+                                    Elapsed: {formatTime(elapsedTime)}
                                 </div>
                             )}
                         </div>
@@ -344,14 +360,14 @@ export default function DeliveryPage() {
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Pickup (Donor)</p>
-                                                <p className="font-semibold text-gray-900 text-sm mt-0.5">{activeTask.foodType}</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">{activeTask.distance} away</p>
+                                                <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">{activeTask.foodType}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{activeTask.distance} away</p>
                                             </div>
                                             <button
                                                 onClick={() => openEmbeddedMap('pickup')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors"
                                             >
-                                                📍 Navigate
+                                                Navigate
                                             </button>
                                         </div>
                                     </div>
@@ -361,7 +377,7 @@ export default function DeliveryPage() {
                                 <div className="flex items-start gap-4">
                                     <div className="flex flex-col items-center">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-md ${
-                                            activeStatus === 'picked_up' ? 'gradient-brand text-white animate-pulse-soft' : 'bg-gray-200 text-gray-400'
+                                            activeStatus === 'picked_up' ? 'gradient-brand text-white animate-pulse-soft' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
                                         }`}>
                                             B
                                         </div>
@@ -376,7 +392,7 @@ export default function DeliveryPage() {
                                                 onClick={() => openEmbeddedMap('dropoff')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors"
                                             >
-                                                📍 Navigate
+                                                Navigate
                                             </button>
                                         </div>
                                     </div>
@@ -387,13 +403,15 @@ export default function DeliveryPage() {
                             <button
                                 onClick={handleAction}
                                 className={`w-full py-4 rounded-2xl font-extrabold text-base transition-all duration-300 text-white ${
-                                    activeStatus === 'none'
+                                    activeStatus === 'pending'
+                                        ? 'bg-orange-500 hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-200'
+                                        : activeStatus === 'none'
                                         ? 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200'
                                         : 'gradient-success hover:shadow-lg hover:shadow-green-200'
                                 }`}
                                 id="delivery-action"
                             >
-                                {activeStatus === 'none' ? '📦 Mark as Picked Up' : '✅ Mark as Delivered'}
+                                {activeStatus === 'pending' ? 'Accept Delivery Task' : activeStatus === 'none' ? 'Mark as Picked Up' : 'Mark as Delivered'}
                             </button>
 
                             {/* Embedded Map */}
@@ -401,7 +419,6 @@ export default function DeliveryPage() {
                                 <div className="mt-6 rounded-xl overflow-hidden border border-gray-200 relative animate-scale-in">
                                     {eta && (
                                         <div className="absolute top-2 right-2 z-[1000] bg-white px-3 py-2 rounded-lg shadow-md flex items-center gap-2">
-                                            <span className="text-xl">⏱️</span>
                                             <div>
                                                 <div className="text-xs text-gray-500 font-bold uppercase">Estimated Time</div>
                                                 <div className="text-sm font-extrabold text-brand-600">{eta} mins based on current traffic</div>
@@ -446,8 +463,8 @@ export default function DeliveryPage() {
                                 }`}
                             >
                                 <div className={`text-3xl mb-2 ${badge.unlocked ? '' : 'grayscale'}`}>{badge.icon}</div>
-                                <div className="text-xs font-bold text-gray-800">{badge.title}</div>
-                                <div className="text-[10px] text-gray-400 mt-0.5">{badge.desc}</div>
+                                <div className="text-xs font-bold text-gray-800 dark:text-gray-200">{badge.title}</div>
+                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{badge.desc}</div>
                                 {badge.unlocked && (
                                     <span className="badge badge-success mt-2 text-[9px]">Unlocked</span>
                                 )}

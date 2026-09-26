@@ -133,17 +133,17 @@ export default function NgoPage() {
     const pendingCount = feed.filter(f => !f.accepted).length;
 
     return (
-        <div className="min-h-screen bg-surface-50">
+        <div className="min-h-screen bg-surface-50 dark:bg-[#0A0B1A] transition-colors duration-300">
             {/* Dashboard Header */}
             <div className="gradient-brand text-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
                         <div>
-                            <h1 className="text-2xl sm:text-3xl font-extrabold">NGO Dashboard 🏥</h1>
+                            <h1 className="text-2xl sm:text-3xl font-extrabold">NGO Dashboard</h1>
                             <p className="text-white/80 mt-1">Monitor incoming food donations in real-time</p>
                         </div>
                         <span className="badge bg-white/20 text-white border border-white/20 backdrop-blur-sm text-sm px-4 py-1.5">
-                            🏥 NGO Account
+                            NGO Account
                         </span>
                     </div>
                 </div>
@@ -157,10 +157,9 @@ export default function NgoPage() {
                         { icon: '✅', value: acceptedCount, label: 'Accepted', color: 'text-success-500' },
                         { icon: '⏳', value: pendingCount, label: 'Pending', color: 'text-accent-500' },
                     ].map((stat, i) => (
-                        <div key={i} className="stat-card text-center">
-                            <div className="text-3xl mb-2">{stat.icon}</div>
-                            <div className={`text-2xl font-extrabold ${stat.color}`}>{stat.value}</div>
-                            <div className="text-xs text-gray-500 font-semibold uppercase tracking-wide mt-1">{stat.label}</div>
+                        <div key={i} className="stat-card text-center py-4">
+                            <div className={`text-3xl font-extrabold ${stat.color}`}>{stat.value}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mt-1">{stat.label}</div>
                         </div>
                     ))}
                 </div>
@@ -169,8 +168,8 @@ export default function NgoPage() {
                     {/* Feed Panel */}
                     <div className="w-full lg:w-[380px] flex-shrink-0 animate-slide-up delay-200">
                         <div className="premium-card p-6">
-                            <h2 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                                <span>📡</span> Live Request Feed
+                            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                Live Rescue Opportunities
                                 {pendingCount > 0 && (
                                     <span className="badge badge-brand animate-pulse-soft ml-auto">{pendingCount} New</span>
                                 )}
@@ -180,11 +179,12 @@ export default function NgoPage() {
                                 {feed.length === 0 ? (
                                     <div className="text-center py-12">
                                         <div className="relative inline-block mb-4">
-                                            <div className="text-5xl animate-pulse-soft">📡</div>
-                                            <div className="absolute inset-0 w-16 h-16 mx-auto rounded-full border-2 border-brand-200 animate-radar"></div>
+                                            <div className="w-16 h-16 rounded-full border-2 border-brand-200 animate-radar flex items-center justify-center">
+                                                <div className="w-4 h-4 bg-brand-500 rounded-full animate-pulse"></div>
+                                            </div>
                                         </div>
-                                        <p className="text-gray-500 font-semibold">Waiting for donations...</p>
-                                        <p className="text-xs text-gray-400 mt-1">Alerts appear here in real-time</p>
+                                        <p className="text-gray-500 dark:text-gray-400 font-semibold">No active rescues right now.</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">We'll alert you when surplus food is available nearby.</p>
                                     </div>
                                 ) : (
                                     feed.map((item, idx) => {
@@ -201,7 +201,6 @@ export default function NgoPage() {
                                                 {item.accepted ? (
                                                     <div className="p-4">
                                                         <div className="flex items-center gap-2 mb-3">
-                                                            <span className="text-xl">✅</span>
                                                             <span className="font-bold text-success-600 text-sm">Donation Accepted</span>
                                                         </div>
                                                         {/* Step Tracker */}
@@ -228,9 +227,6 @@ export default function NgoPage() {
                                                 ) : (
                                                     <div className="p-4">
                                                         <div className="flex items-start gap-3 mb-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-xl flex-shrink-0">
-                                                                {item.foodType?.includes('veg') ? '🥗' : item.foodType?.includes('nonveg') ? '🍗' : '📦'}
-                                                            </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="font-bold text-gray-900 text-sm capitalize">
                                                                     {(item.foodType || 'food').replace(/_/g, ' ')}
@@ -323,7 +319,7 @@ export default function NgoPage() {
                                     )}
 
                                     {routeCoords.length > 0 && (
-                                        <Polyline positions={routeCoords} color="#E23744" weight={5} opacity={0.8} />
+                                        <Polyline positions={routeCoords} color={document.documentElement.classList.contains('dark') ? '#9D50E5' : '#E23744'} weight={5} opacity={0.8} />
                                     )}
                                 </MapContainer>
                             </div>

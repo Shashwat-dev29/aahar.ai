@@ -83,6 +83,32 @@ io.on('connection', (socket) => {
         }
     });
 
+    // When a delivery agent accepts a task
+    socket.on('accept_delivery', async (data) => {
+        const Donation = require('./models/donation');
+        try {
+            const donation = await Donation.findById(data.donationId);
+            if (!donation) return;
+
+            if (donation.assignedDeliveryAgentId) {
+                // Task was already claimed by someone else
+                socket.emit('delivery_already_claimed', { donationId: data.donationId });
+            } else {
+                // Claim it for this agent
+                donation.assignedDeliveryAgentId = data.agentId;
+                await donation.save();
+                
+                // Confirm success to the agent who clicked it
+                socket.emit('delivery_accept_success', { donationId: data.donationId });
+                
+                // Tell all OTHER agents to remove it from their screen
+                socket.broadcast.emit('delivery_claimed_by_other', { donationId: data.donationId });
+            }
+        } catch (err) {
+            console.error("Error accepting delivery:", err);
+        }
+    });
+
     // When delivery agent updates status (picked up, delivered)
     socket.on('delivery_status_update', (data) => {
         socket.broadcast.emit('delivery_status_updated', data);

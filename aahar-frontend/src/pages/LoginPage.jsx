@@ -30,59 +30,35 @@ export default function LoginPage() {
         <div className="min-h-screen flex">
             {/* Left Hero Panel */}
             <div className="hidden lg:flex lg:w-1/2 gradient-brand relative overflow-hidden items-center justify-center p-12">
-                {/* Decorative circles */}
-                <div className="absolute top-[-10%] left-[-10%] w-96 h-96 rounded-full bg-white/5 animate-float"></div>
-                <div className="absolute bottom-[-15%] right-[-10%] w-80 h-80 rounded-full bg-white/5 animate-float" style={{ animationDelay: '1.5s' }}></div>
-                <div className="absolute top-[40%] right-[5%] w-40 h-40 rounded-full bg-white/5 animate-float" style={{ animationDelay: '0.8s' }}></div>
-
                 <div className="relative z-10 text-white max-w-md text-center">
-                    <div className="text-8xl mb-8 animate-float">🍛</div>
                     <h2 className="text-4xl font-extrabold mb-4 leading-tight">
-                        Every Meal<br />Matters.
+                        Sign In
                     </h2>
                     <p className="text-white/80 text-lg mb-10 leading-relaxed">
-                        Join thousands of donors, NGOs, and delivery heroes making zero food waste a reality through AI-powered redistribution.
+                        Access your account to continue.
                     </p>
-
-                    {/* Impact Stats */}
-                    <div className="grid grid-cols-3 gap-4">
-                        {[
-                            { value: '10K+', label: 'Meals Saved' },
-                            { value: '500+', label: 'Active Donors' },
-                            { value: '50+', label: 'NGOs Connected' },
-                        ].map((stat, i) => (
-                            <div key={i} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-                                <div className="text-2xl font-extrabold text-white">{stat.value}</div>
-                                <div className="text-xs text-white/70 mt-1 font-medium">{stat.label}</div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
 
             {/* Right Form Panel */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-surface-50">
-                <div className="w-full max-w-md animate-slide-up">
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-surface-50 dark:bg-[#0A0B1A] transition-colors duration-300">
+                <div className="w-full max-w-md">
                     {/* Mobile Logo */}
                     <div className="lg:hidden text-center mb-8">
                         <div className="inline-flex items-center gap-2.5">
-                            <div className="w-10 h-10 gradient-brand rounded-xl flex items-center justify-center shadow-lg" style={{ boxShadow: '0 4px 14px rgba(226,55,68,0.3)' }}>
-                                <span className="text-white text-xl">🍛</span>
-                            </div>
-                            <span className="text-2xl font-extrabold" style={{ background: 'linear-gradient(135deg, #E23744, #FC6D2D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Aahar.AI</span>
+                            <span className="text-2xl font-extrabold" style={{ background: 'linear-gradient(135deg, #E23744, #FC6D2D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Aahar</span>
                         </div>
                     </div>
 
                     {/* Welcome Text */}
                     <div className="mb-8">
-                        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Welcome back 👋</h2>
-                        <p className="text-gray-500">Sign in to continue your food rescue mission.</p>
+                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Sign In</h2>
+                        <p className="text-gray-500 dark:text-gray-400">Please enter your credentials.</p>
                     </div>
 
                     {/* Error Message */}
                     {error && (
-                        <div className="toast-error flex items-center gap-2 mb-6 animate-shake">
-                            <span className="text-lg">⚠️</span>
+                        <div className="toast-error flex items-center gap-2 mb-6">
                             <span className="text-sm font-semibold">{error}</span>
                         </div>
                     )}
@@ -90,16 +66,15 @@ export default function LoginPage() {
                     {/* Login Form */}
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">📧</span>
                                 <input
                                     type="email"
                                     placeholder="you@example.com"
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="input-branded pl-12"
+                                    className="input-branded"
                                     id="login-email"
                                 />
                             </div>
@@ -107,34 +82,33 @@ export default function LoginPage() {
 
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <label className="text-sm font-semibold text-gray-700">Password</label>
-                                <a href="#" className="text-xs font-semibold text-brand-500 hover:text-brand-600 no-underline transition-colors">Forgot password?</a>
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Password</label>
+                                <a href="#" className="text-xs font-semibold text-brand-500 dark:text-[#9D50E5] hover:text-brand-600 no-underline transition-colors">Forgot password?</a>
                             </div>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔒</span>
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder="Enter your password"
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="input-branded pl-12 pr-12"
+                                    className="input-branded pr-12"
                                     id="login-password"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-sm"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-sm font-semibold"
                                 >
-                                    {showPassword ? '🙈' : '👁️'}
+                                    {showPassword ? 'Hide' : 'Show'}
                                 </button>
                             </div>
                         </div>
 
                         {/* Remember Me */}
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" id="remember" className="w-4 h-4 rounded accent-brand-500 cursor-pointer" />
-                            <label htmlFor="remember" className="text-sm text-gray-600 cursor-pointer">Remember me</label>
+                            <input type="checkbox" id="remember" className="w-4 h-4 rounded accent-brand-500 dark:accent-[#9D50E5] cursor-pointer" />
+                            <label htmlFor="remember" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer">Remember me</label>
                         </div>
 
                         <button
@@ -159,25 +133,25 @@ export default function LoginPage() {
 
                     {/* Divider */}
                     <div className="flex items-center gap-3 my-6">
-                        <div className="flex-1 h-px bg-gray-200"></div>
+                        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
                         <span className="text-xs text-gray-400 font-medium">OR CONTINUE WITH</span>
-                        <div className="flex-1 h-px bg-gray-200"></div>
+                        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
                     </div>
 
                     {/* Social Login (visual) */}
                     <div className="grid grid-cols-2 gap-3">
-                        <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all text-sm font-semibold text-gray-700">
-                            <span className="text-lg">🔵</span> Google
+                        <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-[#13142B] transition-all text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Google
                         </button>
-                        <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all text-sm font-semibold text-gray-700">
-                            <span className="text-lg">📘</span> Facebook
+                        <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-[#13142B] transition-all text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Facebook
                         </button>
                     </div>
 
                     {/* Register Link */}
-                    <p className="text-center mt-8 text-sm text-gray-500">
+                    <p className="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
                         Don't have an account?{' '}
-                        <Link to="/register" className="font-bold text-brand-500 hover:text-brand-600 no-underline transition-colors">
+                        <Link to="/register" className="font-bold text-brand-500 dark:text-[#9D50E5] hover:text-brand-600 no-underline transition-colors">
                             Create one free →
                         </Link>
                     </p>

@@ -117,6 +117,10 @@ router.post('/api/auth/logout', (req, res) => {
 router.post('/api/donations/broadcast', async (req, res) => {
     const { donorId, foodType, quantity, prepTime, currentTemp, donorCoords } = req.body;
 
+    if (!donorId || !foodType || !quantity || !prepTime || !currentTemp || !donorCoords) {
+        return res.status(400).json({ error: "Missing required fields for broadcast." });
+    }
+
     const io = req.app.get('io');
     const connectedNgos = req.app.get('connectedNgos');
 
@@ -153,8 +157,13 @@ router.post('/api/donations/broadcast', async (req, res) => {
 
             if (result.donation_status === 'APPROVED_FOR_PICKUP') {
                 if (!savedDonation) {
+                    // Look up user by email to get their ObjectId
+                    const User = require('../models/User');
+                    const donorUser = await User.findOne({ email: donorId });
+                    const donorObjectId = donorUser ? donorUser._id : null;
+
                     // Create only once
-                    savedDonation = await Donation.create({ donorId, foodType, quantity, donorCoords });
+                    savedDonation = await Donation.create({ donorId: donorObjectId, foodType, quantity, donorCoords });
                 }
                 io.to(socketId).emit('new_food_alert', {
                     donationId: savedDonation._id,
@@ -180,10 +189,54 @@ router.post('/api/donations/broadcast', async (req, res) => {
     }
 });
 
-// --- 6. STATS ---
+// --- 6. GLOBAL STATS ---
 router.get('/api/stats', async (req, res) => {
     const total = await Donation.countDocuments();
     res.json({ mealsServed: total * 25, foodSavedKg: total * 5 });
+});
+
+// --- 7. DONOR SPECIFIC STATS ---
+router.get('/api/donations/my-stats', async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ error: "Email is required" });
+
+        const User = require('../models/User');
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const donations = await Donation.find({ donorId: user._id }).sort({ createdAt: -1 }).limit(10);
+        
+        // Calculate stats
+        let totalDonations = await Donation.countDocuments({ donorId: user._id });
+        let activeListings = await Donation.countDocuments({ donorId: user._id, status: 'active' });
+        
+        // Calculate impact score based on donations
+        let impactScore = 5.0; // Default max
+        if (totalDonations < 5) impactScore = 4.5;
+        if (totalDonations === 0) impactScore = 0;
+
+        let peopleFed = 0;
+        donations.forEach(d => peopleFed += (d.quantity || 0));
+
+        // Let's get total people fed for all time (not just recent 10)
+        const allDonations = await Donation.find({ donorId: user._id });
+        let totalPeopleFed = 0;
+        allDonations.forEach(d => totalPeopleFed += (d.quantity || 0));
+
+        res.json({
+            stats: {
+                totalDonations,
+                peopleFed: totalPeopleFed,
+                activeListings,
+                impactScore: impactScore.toFixed(1)
+            },
+            recentDonations: donations
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch stats." });
+    }
 });
 
 module.exports = router;
