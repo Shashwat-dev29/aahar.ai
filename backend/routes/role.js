@@ -127,7 +127,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
     try {
         let savedDonation = null;
         let isSpoiled = false;
-
+        console.log(`[DEBUG] Number of connected NGOs: ${connectedNgos.size}`);
         const promises = Array.from(connectedNgos.entries()).map(async ([socketId, ngo]) => {
             try {
                 const pyRes = await axios.post(process.env.PYTHON_ENGINE_URL, {
@@ -140,6 +140,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
                 });
                 return { socketId, result: pyRes.data };
             } catch (err) {
+                console.error(`[DEBUG] Axios error hitting Python Engine:`, err.message);
                 return null; // Ignore failed requests to Python engine
             }
         });
@@ -149,7 +150,7 @@ router.post('/api/donations/broadcast', async (req, res) => {
         for (const resData of responses) {
             if (!resData) continue;
             const { socketId, result } = resData;
-
+console.log(`[DEBUG] Python Engine Response for NGO ${socketId}:`, result);
             if (result.donation_status === 'REJECTED' && result.reason === 'Food is spoiled.') {
                 isSpoiled = true;
                 break; // Stop assigning if food is completely spoiled
