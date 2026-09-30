@@ -1,133 +1,93 @@
-const dns=require('dns')
-dns.setServers(['1.1.1.1', '8.8.8.8']);
+require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
-require('dotenv').config();
+const cluster=require('cluster')
+const os=require('os');
+const cookieParser = require('cookie-parser');
+const{createAdapter}=require('@socket.io/redis-adapter');
+
+const redisClient=require('./services/redisService');
 const connectDB = require('./config/db');
+const rateLimiter = require('./middleware/rateLimiter');
+const socketService = require('./services/socketService');
+
+// Route Imports
+const authRoutes = require('./routes/authRoutes');
+const donationRoutes = require('./routes/donationRoutes');
+const statsRoutes = require('./routes/statsRoutes');
 
 const app = express();
 const server = http.createServer(app);
-const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
+
+// Database Connection
+connectDB();
+
+// Middleware
 app.use(cookieParser());
+app.use(rateLimiter);
+app.use(cors({ 
+    origin: ["http://localhost:5173", "http://127.0.0.1:5500"], 
+    credentials: true 
+}));
+app.use(express.json());
 
-// Rate Limiter Setup
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per `window`
-    message: { error: "Too many requests from this IP, please try again after 15 minutes" },
-    standardHeaders: true, 
-    legacyHeaders: false, 
-});
-app.use(limiter);
-
-// Explicitly defining allowed methods for Socket.io CORS (Typo fixed)
+// Socket.io Setup
 const io = new Server(server, {
     cors: {
         origin:["http://127.0.0.1:5500","http://localhost:5173"],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     }
 });
-
-connectDB();
-
-// Express CORS
-app.use(cors({ origin: ["http://localhost:5173", "http://127.0.0.1:5500"], 
-    credentials: true }));
-app.use(express.json());
+const pubClient=redisClient.duplicate();
+const subClient=redisClient.duplicate();
+Promise.all([pubClient.connect(),subClient.connect()]).then(()=>{
+    io.adapter(createAdapter(pubClient,subClient));
+    console.log("[Socket.Io]Redis Adapter attached successfully");
+});
 
 const connectedNgos = new Map();
 const connectedDeliveryAgents = new Map();
 
-io.on('connection', (socket) => {
-    // NGO registration
-    socket.on('register_ngo', (data) => {
-        connectedNgos.set(socket.id, { ngoId: data.id, coords: data.coords });
-        console.log(`NGO Registered for Live Feed: ${data.id}`);
-    });
+// Initialize Socket Service
+socketService.init(io, connectedNgos, connectedDeliveryAgents);
 
-    // Delivery agent registration
-    socket.on('register_delivery', (data) => {
-        connectedDeliveryAgents.set(socket.id, { agentId: data.id, coords: data.coords });
-        console.log(`Delivery Agent Registered: ${data.id}`);
-    });
-
-    socket.on('delivery_location_update', (data) => {
-        // Update stored coords for this delivery agent in O(1) time
-        const agent = connectedDeliveryAgents.get(socket.id);
-        if (agent) {
-            agent.coords = data.coords;
-        }
-        // Broadcast the GPS ping to all connected users instantly
-        socket.broadcast.emit('update_delivery_marker', data);
-    });
-
-    // When an NGO accepts a donation, assign it to delivery agents
-    socket.on('ngo_accepted_donation', (data) => {
-        if (connectedDeliveryAgents.size > 0) {
-            const deliveryPayload = {
-                donationId: data.donationId,
-                foodType: data.foodType,
-                quantity: data.quantity,
-                donorCoords: data.donorCoords,
-                ngoCoords: data.ngoCoords,
-                distance: "Calculating..."
-            };
-
-            for (let [socketId, agent] of connectedDeliveryAgents.entries()) {
-                io.to(socketId).emit('delivery_assigned', deliveryPayload);
-                console.log(`Delivery assignment sent to agent: ${agent.agentId}`);
-            }
-        }
-    });
-
-    // When a delivery agent accepts a task
-    socket.on('accept_delivery', async (data) => {
-        const Donation = require('./models/donation');
-        try {
-            const donation = await Donation.findById(data.donationId);
-            if (!donation) return;
-
-            if (donation.assignedDeliveryAgentId) {
-                // Task was already claimed by someone else
-                socket.emit('delivery_already_claimed', { donationId: data.donationId });
-            } else {
-                // Claim it for this agent
-                donation.assignedDeliveryAgentId = data.agentId;
-                await donation.save();
-                
-                // Confirm success to the agent who clicked it
-                socket.emit('delivery_accept_success', { donationId: data.donationId });
-                
-                // Tell all OTHER agents to remove it from their screen
-                socket.broadcast.emit('delivery_claimed_by_other', { donationId: data.donationId });
-            }
-        } catch (err) {
-            console.error("Error accepting delivery:", err);
-        }
-    });
-
-    // When delivery agent updates status (picked up, delivered)
-    socket.on('delivery_status_update', (data) => {
-        socket.broadcast.emit('delivery_status_updated', data);
-    });
-
-    socket.on('disconnect', () => {
-        connectedNgos.delete(socket.id);
-        connectedDeliveryAgents.delete(socket.id);
-    });
-});
-
-// Share these variables so role.js can use them
+// Share variables for legacy or direct access if needed
 app.set('io', io);
 app.set('connectedNgos', connectedNgos);
 app.set('connectedDeliveryAgents', connectedDeliveryAgents);
 
-// Import and use your route file
-const roleRoutes = require('./routes/role');
-app.use('/', roleRoutes);
+// Export io for modules that might require it directly
+exports.io = io;
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/donations', donationRoutes);
+app.use('/api/stats', statsRoutes);
+
+// const PORT = process.env.PORT || 3000;
+// server.listen(PORT, () => console.log(`Node Gateway running on port ${PORT}`));
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Node Gateway running on port ${PORT}`));
+const numCPUs = os.cpus().length;
+if(cluster.isPrimary)
+{
+    console.log(`[Master] Load Balancer is starting on PID ${process.pid}`);
+    console.log(`[Master] spawning ${numCPUs}Worker Servers..`);
+    
+
+for(let i=0;i<numCPUs;i++)
+{
+    cluster.fork();
+}
+cluster.on('exit',(worker,code,signal)=>{
+    console.log(`[Master] Worker ${worker.process.pid}died.  Spawning a new one...`);
+    cluster.fork();
+});
+}
+else{
+    server.listen(PORT,()=>{
+        console.log(`[Worker${process.pid}]Node server running on ${PORT}`);
+    })
+}
